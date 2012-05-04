@@ -7,6 +7,8 @@ class Dcpu16Value
     @isReg = false
     @mEncoding = enc
 
+    @mNext=0
+
     #
     # Decode Value
     #
@@ -18,7 +20,8 @@ class Dcpu16Value
       @mValue = @mCpu.readReg enc - 0x08
     else if 0x10 <= enc <= 0x17
       @isMem = true
-      @mValue = @mCpu.nextWord() + @mCpu.readReg enc - 0x10
+      @mNext = @mCpu.nextWord()
+      @mValue = @mNext + @mCpu.readReg enc - 0x10
     else if enc == 0x18
       @isMem = true
       @mValue = @mCpu.pop()
@@ -39,9 +42,11 @@ class Dcpu16Value
       @mValue = Dcpu16.REG_O
     else if enc == 0x1e
       @isMem = true
-      @mValue = @mCpu.nextWord()
+      @mNext = @mCpu.nextWord()
+      @mValue = @mNext
     else if enc == 0x1f
-      @mValue = @mCpu.nextWord()
+      @mNext = @mCpu.nextWord()
+      @mValue = @mNext
     else if 0x20 <= enc <= 0x1f
       @mValue = enc - 0x20
 
@@ -64,6 +69,41 @@ class Dcpu16Value
 
   raw: () -> @mEncoding
 
+  pp: () ->
+    enc = @mEncoding
+    if 0x00 <= enc <= 0x07
+      process.stdout.write Dcpu16.REG_DISASM[enc]
+    else if 0x08 <= enc <= 0x0f
+      process.stdout.write "["
+      process.stdout.write Dcpu16.REG_DISASM[enc-0x8]
+      process.stdout.write "]"
+    else if 0x10 <= enc <= 0x17
+      process.stdout.write "["
+      process.stdout.write "0x" + @mNext.toString 16
+      process.stdout.write "+"
+      process.stdout.write Dcpu16.REG_DISASM[enc-0x10]
+      process.stdout.write "]"
+    else if enc == 0x18
+      process.stdout.write "POP"
+    else if enc == 0x19
+      process.stdout.write "PEEK"
+    else if enc == 0x1a
+      process.stdout.write "PUSH"
+    else if enc == 0x1b
+      process.stdout.write "SP"
+    else if enc == 0x1c
+      process.stdout.write "PC"
+    else if enc == 0x1d
+      process.stdout.write "O"
+    else if enc == 0x1e
+      process.stdout.write "["
+      process.stdout.write "0x" + @mNext.toString 16
+      process.stdout.write "]"
+    else if enc == 0x1f
+      process.stdout.write "0x" + @mNext.toString 16
+    else if 0x20 <= enc <= 0x3f
+      process.stdout.write "0x" + (enc - 0x20).toString 16
+
 class Dcpu16
   #
   # Opcodes
@@ -74,9 +114,25 @@ class Dcpu16
    @OPC_IFE, @OPC_IFN, @OPC_IFG, @OPC_IFB] = [0x0..0xf]
 
   #
+  # Opcode Disasm
+  #
+  @OPC_DISASM = [
+   "ADV", "SET", "ADD", "SUB", "MUL", "DIV", "MOD", "SHL",
+   "SHR", "AND", "BOR", "XOR", "IFE", "IFN", "IFG", "IFB"]
+
+  #
+  # Advance Opcode Disasm
+  #
+  @ADV_OPC_DISASM = [
+   "RSV", "JSR"]
+
+  #
   # Advanced Opcodes
   #
   [@ADV_JSR] = [1]
+
+  @REG_DISASM = [
+   "A", "B", "C", "X", "Y", "Z", "I", "J", "PC", "SP", "O"]
 
   #
   # Register Indicies
@@ -131,10 +187,8 @@ class Dcpu16
   # Executes an advanced instruction
   #
   execAdv: (opc, valA) ->
-    console.log "Adv Opc: #{opc}"
     switch opc
       when Dcpu16.ADV_JSR
-        console.log "JSR"
         addr = @push()
         @mMemory[addr] = @mRegs[Dcpu16.REG_PC]
         @mRegs[Dcpu16.REG_PC] = valA.get()
@@ -153,52 +207,40 @@ class Dcpu16
       when Dcpu16.OPC_ADV
         @execAdv valA.raw(), valB
       when Dcpu16.OPC_SET
-        console.log "SET"
         valA.set valB.get()
       when Dcpu16.OPC_ADD
-        console.log "ADD"
         valA.set valA.get() + valB.get()
         @mCycles += 1
         # TODO: check overflow
       when Dcpu16.OPC_SUB
-        console.log "SUB"
         valA.set valA.get() - valB.get()
         @mCycles += 1
         # TODO: check underflow
       when Dcpu16.OPC_MUL
-        console.log "MUL"
         valA.set valA.get() * valB.get()
         @mCycles += 1
         # TODO: set overflow
       when Dcpu16.OPC_DIV
-        console.log "DIV"
         valA.set valA.get() / valB.get()
         @mCycles += 2
         # TODO: set overflow (div by zero)
       when Dcpu16.OPC_MOD
-        console.log "MOD"
         valA.set valA.get() % valB.get()
         @mCycles += 2
         # TODO: set overflow
       when Dcpu16.OPC_SHL
-        console.log "SHL"
         valA.set valA.get() << valB.get()
         @mCycles += 1
       when Dcpu16.OPC_SHR
-        console.log "AND"
         valA.set valA.get() >> valB.get()
         @mCycles += 1
       when Dcpu16.OPC_AND
-        console.log "AND"
         valA.set valA.get() & valB.get()
       when Dcpu16.OPC_BOR
-        console.log "BOR"
         valA.set valA.get() | valB.get()
       when Dcpu16.OPC_XOR
-        console.log "XOR"
         valA.set valA.get() ^ valB.get()
       when Dcpu16.OPC_IFE
-        console.log "IFE"
         if valA.get() == valB.get()
           @mSkipNext=true
           @mCycles += 1
@@ -206,7 +248,6 @@ class Dcpu16
           console.log "Condition Failed"
           @mCycles += 2
       when Dcpu16.OPC_IFN
-        console.log "IFN"
         if valA.get() != valB.get()
           @mSkipNext=true
           @mCycles += 1
@@ -214,7 +255,6 @@ class Dcpu16
           console.log "Condition Failed"
           @mCycles += 2
       when Dcpu16.OPC_IFG
-        console.log "IFG"
         if valA.get() > valB.get()
           @mSkipNext=true
           @mCycles += 1
@@ -222,7 +262,6 @@ class Dcpu16
           console.log "Condition Failed"
           @mCycles += 2
       when Dcpu16.OPC_IFB
-        console.log "IFB"
         if (valA.get() & valB.get()) != 0
           @mSkipNext=true
           @mCycles += 1
@@ -231,15 +270,28 @@ class Dcpu16
           @mCycles += 2
 
   step: () ->
-    console.log "PC: #{@mRegs[Dcpu16.REG_PC]}"
     instr = @fetchByte()
     [opc, valA, valB] = @decode instr
 
+    if opc == 0
+      
+      process.stdout.write Dcpu16.ADV_OPC_DISASM[valA.raw()]
+      process.stdout.write " "
+      valB.pp()
+      process.stdout.write "\n"
+    else
+      process.stdout.write Dcpu16.OPC_DISASM[opc]
+      process.stdout.write " "
+      valA.pp()
+      process.stdout.write ", "
+      valB.pp()
+      process.stdout.write "\n"
+ 
     #
     # Failed conditional execution
     #
     if @mSkipNext
-      console.log "Skipping Instruction."
+      console.log "Instruction Not Executed."
       @mSkipNext=false
       return
 
@@ -247,6 +299,7 @@ class Dcpu16
 
 
   run: () -> @step() while true
+
 
   #
   # Constants... there's probably (hopefully?) a better way to do this.
