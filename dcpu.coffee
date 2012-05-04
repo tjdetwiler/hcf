@@ -224,7 +224,8 @@ class Dcpu16
   #
   # Loads a ramdisk
   #
-  loadBinary: (bin) -> @mMemory = bin
+  loadBinary: (bin, base=0) ->
+    @mMemory[x] = bin[x] for x in [base..base+bin.length]
 
   #
   # Fetch one word and increment the PC
