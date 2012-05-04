@@ -55,9 +55,9 @@ class Dcpu16Value
     
   set: (val) ->
     if @isMem
-      @mCpu.writeMem @mValue val
+      @mCpu.writeMem @mValue, val
     else if @isReg
-      @mCpu.writeReg @mValue val
+      @mCpu.writeReg @mValue, val
     else
       # error
       console.log "Error: Attempt to 'set' a literal value"
@@ -76,7 +76,7 @@ class Dcpu16
   #
   # Advanced Opcodes
   #
-  [@ADV_JSR] = [0..0]
+  [@ADV_JSR] = [1]
 
   #
   # Register Indicies
@@ -91,6 +91,7 @@ class Dcpu16
     @mMemory = []
     @mSkipNext = false
     @mRegs[x]   = 0 for x in [0..0xf]
+    @mRegs[Dcpu16.REG_SP] = 0xffff
     @mMemory[x] = 0 for x in [0..0xffff]
     @mMemory[x] = program[x] for x in [0..program.length]
  
@@ -101,9 +102,9 @@ class Dcpu16
   writeReg: (n,val) -> @mRegs[n] = val
   readMem:  (addr) -> @mMemory[addr]
   writeMem: (addr, val) -> @mMemory[addr] = val
-  push:     () -> @mRegs[Dcpu16.REG_SP]++
+  push:     () -> --@mRegs[Dcpu16.REG_SP]
   peek:     () -> @mRegs[Dcpu16.REG_SP]
-  pop:      ()   -> ++@mRegs[Dcpu16.REG_SP]
+  pop:      () -> @mRegs[Dcpu16.REG_SP]++
 
   #
   # Loads a ramdisk
@@ -116,7 +117,6 @@ class Dcpu16
   fetchByte: () ->
     @mCycles++
     pc = @mRegs[Dcpu16.REG_PC]++
-    console.log "Setting PC to #{pc+1}"
     @mMemory[pc]
 
   nextWord: () -> @fetchByte()
@@ -125,20 +125,17 @@ class Dcpu16
     opcode = instr & @OPCODE_MASK()
     valA   = (instr & @VALA_MASK()) >> 4
     valB   = (instr & @VALB_MASK()) >> 10
-    console.log "Decode:"
-    console.log "Encoded:#{instr.toString 16}"
-    console.log "\topc:  #{opcode.toString 16}"
-    console.log "\tvalA: #{valA.toString 16}"
-    console.log "\tvalB: #{valB.toString 16}"
-    [opcode, new Dcpu16Value @,valA, new Dcpu16Value @,valB]
+    [opcode, new Dcpu16Value(@,valA), new Dcpu16Value(@,valB)]
 
   #
   # Executes an advanced instruction
   #
   execAdv: (opc, valA) ->
+    console.log "Adv Opc: #{opc}"
     switch opc
-      when @ADV_JSR
-        addr = push()
+      when Dcpu16.ADV_JSR
+        console.log "JSR"
+        addr = @push()
         @mMemory[addr] = @mRegs[Dcpu16.REG_PC]
         @mRegs[Dcpu16.REG_PC] = valA.get()
 
@@ -153,83 +150,99 @@ class Dcpu16
     # Values will add cycles themselves when they're fetched.
     #
     switch opc
-      when @OPC_ADV
-        execAdv valB.raw(), valA
-      when @OPC_SET
+      when Dcpu16.OPC_ADV
+        @execAdv valA.raw(), valB
+      when Dcpu16.OPC_SET
         console.log "SET"
         valA.set valB.get()
-      when @OPC_ADD
+      when Dcpu16.OPC_ADD
         console.log "ADD"
         valA.set valA.get() + valB.get()
         @mCycles += 1
         # TODO: check overflow
-      when @OPC_SUB
+      when Dcpu16.OPC_SUB
+        console.log "SUB"
         valA.set valA.get() - valB.get()
         @mCycles += 1
         # TODO: check underflow
-      when @OPC_MUL
+      when Dcpu16.OPC_MUL
+        console.log "MUL"
         valA.set valA.get() * valB.get()
         @mCycles += 1
         # TODO: set overflow
-      when @OPC_DIV
+      when Dcpu16.OPC_DIV
+        console.log "DIV"
         valA.set valA.get() / valB.get()
         @mCycles += 2
         # TODO: set overflow (div by zero)
-      when @OPC_MOD
+      when Dcpu16.OPC_MOD
+        console.log "MOD"
         valA.set valA.get() % valB.get()
         @mCycles += 2
         # TODO: set overflow
-      when @OPC_SHL
+      when Dcpu16.OPC_SHL
+        console.log "SHL"
         valA.set valA.get() << valB.get()
         @mCycles += 1
-      when @OPC_SHR
-        valA.get valA.get() >> valB.get()
+      when Dcpu16.OPC_SHR
+        console.log "AND"
+        valA.set valA.get() >> valB.get()
         @mCycles += 1
-      when @OPC_AND
+      when Dcpu16.OPC_AND
+        console.log "AND"
         valA.set valA.get() & valB.get()
-      when @OPC_BOR
+      when Dcpu16.OPC_BOR
+        console.log "BOR"
         valA.set valA.get() | valB.get()
-      when @OPC_XOR
+      when Dcpu16.OPC_XOR
+        console.log "XOR"
         valA.set valA.get() ^ valB.get()
-      when @OPC_IFE
+      when Dcpu16.OPC_IFE
+        console.log "IFE"
         if valA.get() == valB.get()
           @mSkipNext=true
           @mCycles += 1
         else
+          console.log "Condition Failed"
           @mCycles += 2
-      when @OPC_IFN
+      when Dcpu16.OPC_IFN
+        console.log "IFN"
         if valA.get() != valB.get()
           @mSkipNext=true
           @mCycles += 1
         else
+          console.log "Condition Failed"
           @mCycles += 2
-      when @OPC_IFG
+      when Dcpu16.OPC_IFG
+        console.log "IFG"
         if valA.get() > valB.get()
           @mSkipNext=true
           @mCycles += 1
         else
+          console.log "Condition Failed"
           @mCycles += 2
-      when @OPC_IFB
+      when Dcpu16.OPC_IFB
+        console.log "IFB"
         if (valA.get() & valB.get()) != 0
           @mSkipNext=true
           @mCycles += 1
         else
+          console.log "Condition Failed"
           @mCycles += 2
 
   step: () ->
     console.log "PC: #{@mRegs[Dcpu16.REG_PC]}"
     instr = @fetchByte()
-    console.log "Fetching #{instr}"
     [opc, valA, valB] = @decode instr
 
     #
     # Failed conditional execution
     #
     if @mSkipNext
+      console.log "Skipping Instruction."
       @mSkipNext=false
       return
 
-    console.log "Executing opc #{opc}"
     @exec opc, valA, valB
 
 
