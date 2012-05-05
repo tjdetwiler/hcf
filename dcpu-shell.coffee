@@ -16,7 +16,8 @@ class Dcpu16Shell extends cmd.Cmd
   constructor: () ->
     @prompt = ">> " 
     @dcpu = new dcpu.Dcpu16()
-    @dcpu.onPreExec dasm.Disasm.ppInstr
+    @dcpu.onPreExec (i) -> console.log dasm.Disasm.ppInstr i
+    @dcpu.onCondFail (i) -> console.log ">SKIP: #{dasm.Disasm.ppInstr i}"
     @intro = 
     """
 

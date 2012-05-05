@@ -220,6 +220,7 @@ class Dcpu16
   #
   onPreExec: (fn) -> @mPreExec = fn
   onPostExec: (fn) -> @mPostExec = fn
+  onCondFail: (fn) -> @mCondFail = fn
 
   #
   # Data Accessors
@@ -265,6 +266,7 @@ class Dcpu16
     i = new Instr @, @nextWord()
     if @mSkipNext
       @mSkipNext = false
+      if @mCondFail? then @mCondFail i
       return @step()
 
     if @mPreExec? then @mPreExec i

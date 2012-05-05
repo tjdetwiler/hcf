@@ -39,52 +39,48 @@ class Disasm
   @ppInstr: (instr) ->
     if instr.mOpc == 0
       # Adv Opc
-      process.stdout.write Disasm.ADV_OPC_DISASM[instr.mValA.raw()]
-      process.stdout.write " "
-      Disasm.ppValue instr.mValB
-      process.stdout.write "\n"
+      op = Disasm.ADV_OPC_DISASM[instr.mValA.raw()]
+      va = Disasm.ppValue instr.mValB
+      "#{op} #{va}"
     else
-      process.stdout.write Disasm.OPC_DISASM[instr.mOpc]
-      process.stdout.write " "
-      Disasm.ppValue instr.mValA
-      process.stdout.write ", "
-      Disasm.ppValue instr.mValB
-      process.stdout.write "\n"
+      op = Disasm.OPC_DISASM[instr.mOpc]
+      va = Disasm.ppValue instr.mValA
+      vb = Disasm.ppValue instr.mValB
+      "#{op} #{va}, #{vb}"
 
   @ppValue: (val) ->
     enc = val.raw()
+    v = ""
     if 0x00 <= enc <= 0x07
-      process.stdout.write Disasm.REG_DISASM[enc]
+      v = Disasm.REG_DISASM[enc]
     else if 0x08 <= enc <= 0x0f
-      process.stdout.write "["
-      process.stdout.write Disasm.REG_DISASM[enc-0x8]
-      process.stdout.write "]"
+      reg = Disasm.REG_DISASM[enc-0x8]
+      v = "[#{reg}]"
     else if 0x10 <= enc <= 0x17
-      process.stdout.write "["
-      process.stdout.write "0x" + val.mNext.toString 16
-      process.stdout.write "+"
-      process.stdout.write Disasm.REG_DISASM[enc-0x10]
-      process.stdout.write "]"
+      lit = val.mNext.toString 16
+      reg = Disasm.REG_DISASM[enc-0x10]
+      v = "[0x#{lit}+#{reg}]"
     else if enc == 0x18
-      process.stdout.write "POP"
+      v = "POP"
     else if enc == 0x19
-      process.stdout.write "PEEK"
+      v = "PEEK"
     else if enc == 0x1a
-      process.stdout.write "PUSH"
+      v = "PUSH"
     else if enc == 0x1b
-      process.stdout.write "SP"
+      v = "SP"
     else if enc == 0x1c
-      process.stdout.write "PC"
+      v = "PC"
     else if enc == 0x1d
-      process.stdout.write "O"
+      v = "O"
     else if enc == 0x1e
-      process.stdout.write "["
-      process.stdout.write "0x" + val.mNext.toString 16
-      process.stdout.write "]"
+      lit = val.mNext.toString 16
+      v = "[0x#{lit}]"
     else if enc == 0x1f
-      process.stdout.write "0x" + val.mNext.toString 16
+      lit = val.mNext.toString 16
+      "0x#{lit}"
     else if 0x20 <= enc <= 0x3f
-      process.stdout.write "0x" + (enc - 0x20).toString 16
+      lit = val.mNext.toString 16
+      "0x#{(enc - 0x20).toString 16}"
 
 
 exports.Disasm = Disasm
