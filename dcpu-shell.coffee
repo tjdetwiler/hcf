@@ -17,7 +17,7 @@ class Dcpu16Shell extends cmd.Cmd
     @prompt = ">> " 
     @dcpu = new dcpu.Dcpu16()
     @dcpu.onPreExec (i) -> console.log dasm.Disasm.ppInstr i
-    @dcpu.onCondFail (i) -> console.log ">SKIP: #{dasm.Disasm.ppInstr i}"
+    @dcpu.onCondFail (i) -> console.log "::SKIP: #{dasm.Disasm.ppInstr i}"
     @intro = 
     """
 
@@ -43,14 +43,7 @@ class Dcpu16Shell extends cmd.Cmd
     console.log "Executes a single DCPU-16 instruction"
 
   do_regs: (toks) ->
-    #
-    # Blegh, JS/Node don't seem to have built-in support for padding
-    #
-    f = (r) ->
-      str = r.toString 16
-      pad = ""
-      pad = pad + "0" for n in [0..4-str.length]
-      pad+str
+    f = dasm.Disasm.fmtHex
     console.log "A:  0x#{f @dcpu.regA()}\t
  B:  0x#{f @dcpu.regB()}\t
  C: 0x#{f @dcpu.regC()}"

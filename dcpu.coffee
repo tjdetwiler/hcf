@@ -26,7 +26,7 @@ class Value
     #
     if 0x00 <= enc <= 0x07
       @isReg = true
-      @mValue = @mCpu.readReg enc
+      @mValue = enc
     else if 0x08 <= enc <= 0x0f
       @isMem = true
       @mValue = @mCpu.readReg enc - 0x08
@@ -59,7 +59,7 @@ class Value
     else if enc == 0x1f
       @mNext = @mCpu.nextWord()
       @mValue = @mNext
-    else if 0x20 <= enc <= 0x1f
+    else if 0x20 <= enc <= 0x3f
       @mValue = enc - 0x20
 
   get: () ->
@@ -162,28 +162,28 @@ class Instr
         valA.set valA.get() ^ valB.get()
       when Dcpu16.OPC_IFE
         if valA.get() == valB.get()
+          @mCycles += 2
+        else
           @mCpu.mSkipNext=true
           @mCycles += 1
-        else
-          @mCycles += 2
       when Dcpu16.OPC_IFN
         if valA.get() != valB.get()
+          @mCycles += 2
+        else
           @mCpu.mSkipNext=true
           @mCycles += 1
-        else
-          @mCycles += 2
       when Dcpu16.OPC_IFG
         if valA.get() > valB.get()
+          @mCycles += 2
+        else
           @mCpu.mSkipNext=true
           @mCycles += 1
-        else
-          @mCycles += 2
       when Dcpu16.OPC_IFB
         if (valA.get() & valB.get()) != 0
+          @mCycles += 2
+        else
           @mCpu.mSkipNext=true
           @mCycles += 1
-        else
-          @mCycles += 2
 
 class Dcpu16
   #
