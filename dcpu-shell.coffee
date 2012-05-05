@@ -23,7 +23,7 @@ class Dcpu16Shell extends cmd.Cmd
 
       *******************************************************
       * DCPU-16 Shell                                       *
-      * Send Bugs to Tim Detwiler <timdetwiler@gamil.com>   *
+      * Send Bugs to Tim Detwiler <timdetwiler@gmail.com>   *
       *******************************************************
     """
     @wordsPerLine = 8
