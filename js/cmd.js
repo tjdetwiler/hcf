@@ -91,7 +91,7 @@
       _results = [];
       for (k in this) {
         v = this[k];
-        if (k.slice(0, 3) === "do_") {
+        if (k.slice(0, 3) === "do_" && (v != null)) {
           _results.push(k.slice(3));
         }
       }

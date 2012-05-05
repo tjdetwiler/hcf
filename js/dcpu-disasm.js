@@ -18,6 +18,21 @@
 
     Disasm.REG_DISASM = ["A", "B", "C", "X", "Y", "Z", "I", "J", "PC", "SP", "O"];
 
+    Disasm.fmtHex = function(n, pad) {
+      var p, str, _, _i, _ref;
+      if (pad == null) {
+        pad = true;
+      }
+      str = n.toString(16);
+      p = "";
+      if (pad) {
+        for (_ = _i = 0, _ref = 4 - str.length; 0 <= _ref ? _i <= _ref : _i >= _ref; _ = 0 <= _ref ? ++_i : --_i) {
+          p = p + "0";
+        }
+      }
+      return p + str;
+    };
+
     Disasm.ppInstr = function(instr) {
       if (instr.mOpc === 0) {
         process.stdout.write(Disasm.ADV_OPC_DISASM[instr.mValA.raw()]);

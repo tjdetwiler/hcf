@@ -216,23 +216,28 @@
     }).apply(this), Dcpu16.REG_A = _ref1[0], Dcpu16.REG_B = _ref1[1], Dcpu16.REG_C = _ref1[2], Dcpu16.REG_X = _ref1[3], Dcpu16.REG_Y = _ref1[4], Dcpu16.REG_Z = _ref1[5], Dcpu16.REG_I = _ref1[6], Dcpu16.REG_J = _ref1[7], Dcpu16.REG_PC = _ref1[8], Dcpu16.REG_SP = _ref1[9], Dcpu16.REG_O = _ref1[10];
 
     function Dcpu16(program) {
-      var x, _k, _l, _m, _ref2;
+      var i, x, _k, _l, _len;
       if (program == null) {
         program = [];
       }
       this.mCycles = 0;
       this.mRegs = [];
-      this.mMemory = [];
       this.mSkipNext = false;
       for (x = _k = 0; 0 <= 0xf ? _k <= 0xf : _k >= 0xf; x = 0 <= 0xf ? ++_k : --_k) {
         this.mRegs[x] = 0;
       }
       this.mRegs[Dcpu16.REG_SP] = 0xffff;
-      for (x = _l = 0; 0 <= 0xffff ? _l <= 0xffff : _l >= 0xffff; x = 0 <= 0xffff ? ++_l : --_l) {
-        this.mMemory[x] = 0;
-      }
-      for (x = _m = 0, _ref2 = program.length; 0 <= _ref2 ? _m <= _ref2 : _m >= _ref2; x = 0 <= _ref2 ? ++_m : --_m) {
-        this.mMemory[x] = program[x];
+      this.mMemory = (function() {
+        var _l, _results2;
+        _results2 = [];
+        for (x = _l = 0; 0 <= 0xffff ? _l <= 0xffff : _l >= 0xffff; x = 0 <= 0xffff ? ++_l : --_l) {
+          _results2.push(0);
+        }
+        return _results2;
+      })();
+      for (i = _l = 0, _len = program.length; _l < _len; i = ++_l) {
+        x = program[i];
+        this.mMemory[i] = x;
       }
     }
 
@@ -272,14 +277,67 @@
       return this.mRegs[Dcpu16.REG_SP]++;
     };
 
+    Dcpu16.prototype._r = function(v, n) {
+      if (v != null) {
+        return this.mRegs[n] = v;
+      } else {
+        return this.mRegs[n];
+      }
+    };
+
+    Dcpu16.prototype.regA = function(v) {
+      return this._r(v, Dcpu16.REG_A);
+    };
+
+    Dcpu16.prototype.regB = function(v) {
+      return this._r(v, Dcpu16.REG_B);
+    };
+
+    Dcpu16.prototype.regC = function(v) {
+      return this._r(v, Dcpu16.REG_C);
+    };
+
+    Dcpu16.prototype.regX = function(v) {
+      return this._r(v, Dcpu16.REG_X);
+    };
+
+    Dcpu16.prototype.regY = function(v) {
+      return this._r(v, Dcpu16.REG_Y);
+    };
+
+    Dcpu16.prototype.regZ = function(v) {
+      return this._r(v, Dcpu16.REG_Z);
+    };
+
+    Dcpu16.prototype.regI = function(v) {
+      return this._r(v, Dcpu16.REG_I);
+    };
+
+    Dcpu16.prototype.regJ = function(v) {
+      return this._r(v, Dcpu16.REG_J);
+    };
+
+    Dcpu16.prototype.regPC = function(v) {
+      return this._r(v, Dcpu16.REG_PC);
+    };
+
+    Dcpu16.prototype.regSP = function(v) {
+      return this._r(v, Dcpu16.REG_SP);
+    };
+
+    Dcpu16.prototype.regO = function(v) {
+      return this._r(v, Dcpu16.REG_O);
+    };
+
     Dcpu16.prototype.loadBinary = function(bin, base) {
-      var x, _k, _ref2, _results2;
+      var i, x, _k, _len, _results2;
       if (base == null) {
         base = 0;
       }
       _results2 = [];
-      for (x = _k = base, _ref2 = base + bin.length; base <= _ref2 ? _k <= _ref2 : _k >= _ref2; x = base <= _ref2 ? ++_k : --_k) {
-        _results2.push(this.mMemory[x] = bin[x]);
+      for (i = _k = 0, _len = bin.length; _k < _len; i = ++_k) {
+        x = bin[i];
+        _results2.push(this.mMemory[base + i] = x);
       }
       return _results2;
     };
@@ -294,14 +352,14 @@
     Dcpu16.prototype.step = function() {
       var i;
       i = new Instr(this, this.nextWord());
+      if (this.mSkipNext) {
+        this.mSkipNext = false;
+        return this.step();
+      }
       if (this.mPreExec != null) {
         this.mPreExec(i);
       }
-      if (this.mSkipNext) {
-        this.mSkipNext = false;
-      } else {
-        i.exec();
-      }
+      i.exec();
       if (this.mPostExec != null) {
         return this.mPostExec(i);
       }
