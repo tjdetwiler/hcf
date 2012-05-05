@@ -1,18 +1,12 @@
+fs = require 'fs'
 cmd = require './cmd'
 dcpu = require './dcpu'
 dasm = require './dcpu-disasm'
 
-program = [
-  0x7c01, 0x0030, 0x7de1, 0x1000, 0x0020, 0x7803, 0x1000, 0xc00d,
-  0x7dc1, 0x001a, 0xa861, 0x7c01, 0x2000, 0x2161, 0x2000, 0x8463,
-  0x806d, 0x7dc1, 0x000d, 0x9031, 0x7c10, 0x0018, 0x7dc1, 0x001a,
-  0x9037, 0x61c1, 0x7dc1, 0x001a, 0x0000, 0x0000, 0x0000, 0x0000
-]
-
 class Dcpu16Shell extends cmd.Cmd
   constructor: () ->
     @prompt = ">> " 
-    @dcpu = new dcpu.Dcpu16(program)
+    @dcpu = new dcpu.Dcpu16()
     @dcpu.onPreExec dasm.Disasm.ppInstr
     @intro = 
     """
@@ -22,6 +16,13 @@ class Dcpu16Shell extends cmd.Cmd
       * Send Bugs to Tim Detwiler <timdetwiler@gamil.com>   *
       *******************************************************
     """
+
+  do_load: (toks) ->
+    fn = toks[0]
+    cpu = @dcpu
+    fs.readFile fn, "utf8", (err, data) ->
+      if not err
+        cpu.loadBinary eval data
 
   do_step: (toks) ->
     @dcpu.step()
