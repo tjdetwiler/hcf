@@ -220,9 +220,21 @@ class Dcpu16
   push:     () -> --@mRegs[Dcpu16.REG_SP]
   peek:     () -> @mRegs[Dcpu16.REG_SP]
   pop:      () -> @mRegs[Dcpu16.REG_SP]++
+  _r:       (v,n) -> if v? then @mRegs[n] = v else @mRegs[n]
+  regA:     (v) -> @_r v, Dcpu16.REG_A
+  regB:     (v) -> @_r v, Dcpu16.REG_B
+  regC:     (v) -> @_r v, Dcpu16.REG_C
+  regX:     (v) -> @_r v, Dcpu16.REG_X
+  regY:     (v) -> @_r v, Dcpu16.REG_Y
+  regZ:     (v) -> @_r v, Dcpu16.REG_Z
+  regI:     (v) -> @_r v, Dcpu16.REG_I
+  regJ:     (v) -> @_r v, Dcpu16.REG_J
+  regPC:    (v) -> @_r v, Dcpu16.REG_PC
+  regSP:    (v) -> @_r v, Dcpu16.REG_SP
+  regO:     (v) -> @_r v, Dcpu16.REG_O
 
   #
-  # Loads a ramdisk
+  # Loads a ramdisk. Binary should be a JS array of 2B words.
   #
   loadBinary: (bin, base=0) ->
     @mMemory[x] = bin[x] for x in [base..base+bin.length]
@@ -235,15 +247,22 @@ class Dcpu16
     pc = @mRegs[Dcpu16.REG_PC]++
     @mMemory[pc]
 
+  #
+  # Execute a Single Instruction
+  #
   step: () ->
     i = new Instr @, @nextWord()
-    if @mPreExec? then @mPreExec i
     if @mSkipNext
       @mSkipNext = false
-    else
-      i.exec()
+      return @step()
+
+    if @mPreExec? then @mPreExec i
+    i.exec()
     if @mPostExec? then @mPostExec i
 
+  #
+  # Run the CPU
+  #
   run: () -> @step() while true
 
 exports.Dcpu16 = Dcpu16

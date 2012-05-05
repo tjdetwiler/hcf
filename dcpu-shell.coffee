@@ -28,9 +28,30 @@ class Dcpu16Shell extends cmd.Cmd
 
   do_step: (toks) ->
     @dcpu.step()
-
   help_step: () ->
     console.log "Executes a single DCPU-16 instruction"
+
+  do_regs: (toks) ->
+    #
+    # Blegh, JS/Node don't seem to have built-in support for padding
+    #
+    f = (r) ->
+      str = r.toString 16
+      pad = ""
+      pad = pad + "0" for n in [0..4-str.length]
+      pad+str
+    console.log "A:  0x#{f @dcpu.regA()}\t
+ B:  0x#{f @dcpu.regB()}\t
+ C: 0x#{f @dcpu.regC()}"
+    console.log "X:  0x#{f @dcpu.regX()}\t
+ Y:  0x#{f @dcpu.regY()}\t
+ Z: 0x#{f @dcpu.regZ()}"
+    console.log "I:  0x#{f @dcpu.regI()}\t
+ J:  0x#{f @dcpu.regJ()}"
+    console.log "PC: 0x#{f @dcpu.regPC()}\t
+ SP: 0x#{f @dcpu.regSP()}\t
+ O: 0x#{f @dcpu.regO()}"
+  help_regs: () -> console.log "Print DCPU Registers."
 
   #
   # Disable "shell" command
