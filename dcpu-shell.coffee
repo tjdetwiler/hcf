@@ -25,6 +25,7 @@ class Dcpu16Shell extends cmd.Cmd
       * Send Bugs to Tim Detwiler <timdetwiler@gamil.com>   *
       *******************************************************
     """
+    @wordsPerLine = 8
 
   do_load: (toks) ->
     fn = toks[0]
@@ -61,6 +62,24 @@ class Dcpu16Shell extends cmd.Cmd
  SP: 0x#{f @dcpu.regSP()}\t
  O: 0x#{f @dcpu.regO()}"
   help_regs: () -> console.log "Print DCPU Registers."
+
+  do_dump: (toks) ->
+    f = dasm.Disasm.fmtHex
+    a = parseInt toks[0]
+    if not a?
+      return help_dump()
+    n = if toks[1]? then parseInt toks[1] else (4*@wordsPerLine)
+
+    console.log "Dumping #{n} bytes at #{f a}"
+
+    for x in [0..(n/@wordsPerLine)-1]
+      process.stdout.write "#{f a}| "
+      for y in [0..@wordsPerLine-1]
+        process.stdout.write "#{f @dcpu.readMem a+y} "
+      process.stdout.write "\n"
+      a += @wordsPerLine
+
+  help_dump: () -> console.log "Dump memory."
 
   #
   # Disable "shell" command

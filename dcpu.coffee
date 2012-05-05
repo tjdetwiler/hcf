@@ -209,12 +209,11 @@ class Dcpu16
   constructor: (program = []) ->
     @mCycles = 0
     @mRegs = []
-    @mMemory = []
     @mSkipNext = false
     @mRegs[x]   = 0 for x in [0..0xf]
     @mRegs[Dcpu16.REG_SP] = 0xffff
-    @mMemory[x] = 0 for x in [0..0xffff]
-    @mMemory[x] = program[x] for x in [0..program.length]
+    @mMemory = (0 for x in [0..0xffff])
+    @mMemory[i] = x for x,i in program
  
   #
   # Events
@@ -249,7 +248,7 @@ class Dcpu16
   # Loads a ramdisk. Binary should be a JS array of 2B words.
   #
   loadBinary: (bin, base=0) ->
-    @mMemory[x] = bin[x] for x in [base..base+bin.length]
+    @mMemory[base+i] = x for x,i in bin
 
   #
   # Fetch one word and increment the PC

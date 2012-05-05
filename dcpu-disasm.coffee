@@ -26,6 +26,16 @@ class Disasm
   @REG_DISASM = [
    "A", "B", "C", "X", "Y", "Z", "I", "J", "PC", "SP", "O"]
 
+  #
+  # Formats a number to be a 2B hex format
+  #
+  @fmtHex: (n, pad=true) ->
+    str = n.toString 16
+    p = ""
+    if pad
+      p = p + "0" for _ in [0..4-str.length]
+    p+str
+
   @ppInstr: (instr) ->
     if instr.mOpc == 0
       # Adv Opc
@@ -75,5 +85,6 @@ class Disasm
       process.stdout.write "0x" + val.mNext.toString 16
     else if 0x20 <= enc <= 0x3f
       process.stdout.write "0x" + (enc - 0x20).toString 16
+
 
 exports.Disasm = Disasm
