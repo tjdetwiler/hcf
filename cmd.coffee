@@ -79,7 +79,7 @@ class Cmd
   # function of the for do_#{cmd} can be found in this object.
   #
   commands:     () ->
-    k[3..] for k,v of this when k[0..2] is "do_"
+    k[3..] for k,v of this when k[0..2] is "do_" and v?
 
   #
   # Handles special built-in patterns.

@@ -23,11 +23,19 @@ class Dcpu16Shell extends cmd.Cmd
     fs.readFile fn, "utf8", (err, data) ->
       if not err
         cpu.loadBinary eval data
+      else
+        console.log "Error loading binary"
 
   do_step: (toks) ->
     @dcpu.step()
 
   help_step: () ->
     console.log "Executes a single DCPU-16 instruction"
+
+  #
+  # Disable "shell" command
+  #
+  do_shell: undefined
+  help_shell: undefined
 
 new Dcpu16Shell().cmdloop()
