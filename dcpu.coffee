@@ -1,3 +1,15 @@
+#
+# dcpu.coffee
+# Tim Detwiler <timdetwiler@gmail.com>
+#
+# DCPU-16 Core Implementation.
+#
+# In order to make this suitable for web-deployment, this file should not
+# rely on any node.js library functions, and should be kept small.
+#
+# TODO: Figure out how to do require and exports while still supporting
+#       browsers
+#
 Module = {}
 
 class Value

@@ -1,3 +1,12 @@
+#
+# dcpu-shell.coffee
+# Tim Detwiler <timdetwiler@gmail.com>
+#
+# DCPU-16 node.js front-end.
+#
+# Provide an interface to interact with a DCPU-16 model.
+#
+
 fs = require 'fs'
 cmd = require './cmd'
 dcpu = require './dcpu'
