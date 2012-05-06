@@ -276,6 +276,13 @@ class Dcpu16
   #
   # Run the CPU
   #
-  run: () -> @step() while true
+  run: () ->
+    @mRun = true
+    @step() while @mRun
+
+  #
+  # Stop the CPU
+  #
+  stop: () -> @mRun = false
 
 exports.Dcpu16 = Dcpu16

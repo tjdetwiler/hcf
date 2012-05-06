@@ -11,13 +11,22 @@ fs = require 'fs'
 cmd = require './cmd'
 dcpu = require './dcpu'
 dasm = require './dcpu-disasm'
+asm = require './dcpu-asm'
 
 class Dcpu16Shell extends cmd.Cmd
   constructor: () ->
+    inst = this
+    @wordsPerLine = 8
+    @mTrace = false
     @prompt = ">> " 
+    @asm = new asm.Assembler()
     @dcpu = new dcpu.Dcpu16()
-    @dcpu.onPreExec (i) -> console.log dasm.Disasm.ppInstr i
-    @dcpu.onCondFail (i) -> console.log "::SKIP: #{dasm.Disasm.ppInstr i}"
+    @dcpu.onPreExec (i) ->
+      if inst.mTrace
+        console.log dasm.Disasm.ppInstr i
+    @dcpu.onCondFail (i) ->
+      if inst.mTrace
+        console.log "::SKIP: #{dasm.Disasm.ppInstr i}"
     @intro = 
     """
 
@@ -26,7 +35,6 @@ class Dcpu16Shell extends cmd.Cmd
       * Send Bugs to Tim Detwiler <timdetwiler@gmail.com>   *
       *******************************************************
     """
-    @wordsPerLine = 8
 
   do_load: (toks) ->
     fn = toks[0]
@@ -36,12 +44,38 @@ class Dcpu16Shell extends cmd.Cmd
         cpu.loadBinary eval data
       else
         console.log "Error loading binary"
+  help_load: () -> "Loads a binary into memory."
 
+  do_asm: (toks) ->
+    fn = toks[0]
+    asm = @asm
+    cpu = @dcpu
+    fs.readFile fn, "utf8", (err, data) ->
+      if not err
+        prog = asm.assemble data
+        cpu.loadBinary prog
+      else
+        console.log "Error assembling file"
+  #
+  # Run the simulation
+  #
+  do_run: (toks) ->
+    @mTrace = false
+    @dcpu.run()
+  help_run: () -> "Run the Simulator"
+
+  #
+  # Single-Step
+  #
   do_step: (toks) ->
+    @mTrace = true
     @dcpu.step()
   help_step: () ->
     console.log "Executes a single DCPU-16 instruction"
 
+  #
+  # Print Registers
+  #
   do_regs: (toks) ->
     f = dasm.Disasm.fmtHex
     console.log "A:  0x#{f @dcpu.regA()}\t
@@ -57,6 +91,9 @@ class Dcpu16Shell extends cmd.Cmd
  O: 0x#{f @dcpu.regO()}"
   help_regs: () -> console.log "Print DCPU Registers."
 
+  #
+  # Dump memory
+  #
   do_dump: (toks) ->
     f = dasm.Disasm.fmtHex
     a = parseInt toks[0]
@@ -72,7 +109,6 @@ class Dcpu16Shell extends cmd.Cmd
         process.stdout.write "#{f @dcpu.readMem a+y} "
       process.stdout.write "\n"
       a += @wordsPerLine
-
   help_dump: () -> console.log "Dump memory."
 
   #
@@ -81,4 +117,8 @@ class Dcpu16Shell extends cmd.Cmd
   do_shell: undefined
   help_shell: undefined
 
-new Dcpu16Shell().cmdloop()
+process.on "SIGINT", ()-> console.log "Oh Hey."
+
+shell = new Dcpu16Shell()
+shell.cmdloop()
+

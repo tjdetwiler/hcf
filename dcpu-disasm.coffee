@@ -33,7 +33,7 @@ class Disasm
     str = n.toString 16
     p = ""
     if pad
-      p = p + "0" for _ in [0..4-str.length]
+      p = p + "0" for _ in [0..3-str.length]
     p+str
 
   @ppInstr: (instr) ->
