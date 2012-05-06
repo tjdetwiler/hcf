@@ -16,7 +16,7 @@
       this.mNext = 0;
       if ((0x00 <= enc && enc <= 0x07)) {
         this.isReg = true;
-        this.mValue = this.mCpu.readReg(enc);
+        this.mValue = enc;
       } else if ((0x08 <= enc && enc <= 0x0f)) {
         this.isMem = true;
         this.mValue = this.mCpu.readReg(enc - 0x08);
@@ -49,7 +49,7 @@
       } else if (enc === 0x1f) {
         this.mNext = this.mCpu.nextWord();
         this.mValue = this.mNext;
-      } else if ((0x20 <= enc && enc <= 0x1f)) {
+      } else if ((0x20 <= enc && enc <= 0x3f)) {
         this.mValue = enc - 0x20;
       }
     }
@@ -160,34 +160,34 @@
           return valA.set(valA.get() ^ valB.get());
         case Dcpu16.OPC_IFE:
           if (valA.get() === valB.get()) {
+            return this.mCycles += 2;
+          } else {
             this.mCpu.mSkipNext = true;
             return this.mCycles += 1;
-          } else {
-            return this.mCycles += 2;
           }
           break;
         case Dcpu16.OPC_IFN:
           if (valA.get() !== valB.get()) {
+            return this.mCycles += 2;
+          } else {
             this.mCpu.mSkipNext = true;
             return this.mCycles += 1;
-          } else {
-            return this.mCycles += 2;
           }
           break;
         case Dcpu16.OPC_IFG:
           if (valA.get() > valB.get()) {
+            return this.mCycles += 2;
+          } else {
             this.mCpu.mSkipNext = true;
             return this.mCycles += 1;
-          } else {
-            return this.mCycles += 2;
           }
           break;
         case Dcpu16.OPC_IFB:
           if ((valA.get() & valB.get()) !== 0) {
+            return this.mCycles += 2;
+          } else {
             this.mCpu.mSkipNext = true;
             return this.mCycles += 1;
-          } else {
-            return this.mCycles += 2;
           }
       }
     };
@@ -247,6 +247,10 @@
 
     Dcpu16.prototype.onPostExec = function(fn) {
       return this.mPostExec = fn;
+    };
+
+    Dcpu16.prototype.onCondFail = function(fn) {
+      return this.mCondFail = fn;
     };
 
     Dcpu16.prototype.readReg = function(n) {
@@ -354,6 +358,9 @@
       i = new Instr(this, this.nextWord());
       if (this.mSkipNext) {
         this.mSkipNext = false;
+        if (this.mCondFail != null) {
+          this.mCondFail(i);
+        }
         return this.step();
       }
       if (this.mPreExec != null) {
@@ -367,11 +374,16 @@
 
     Dcpu16.prototype.run = function() {
       var _results2;
+      this.mRun = true;
       _results2 = [];
-      while (true) {
+      while (this.mRun) {
         _results2.push(this.step());
       }
       return _results2;
+    };
+
+    Dcpu16.prototype.stop = function() {
+      return this.mRun = false;
     };
 
     return Dcpu16;

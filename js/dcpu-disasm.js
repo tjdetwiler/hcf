@@ -26,7 +26,7 @@
       str = n.toString(16);
       p = "";
       if (pad) {
-        for (_ = _i = 0, _ref = 4 - str.length; 0 <= _ref ? _i <= _ref : _i >= _ref; _ = 0 <= _ref ? ++_i : --_i) {
+        for (_ = _i = 0, _ref = 3 - str.length; 0 <= _ref ? _i <= _ref : _i >= _ref; _ = 0 <= _ref ? ++_i : --_i) {
           p = p + "0";
         }
       }
@@ -34,56 +34,53 @@
     };
 
     Disasm.ppInstr = function(instr) {
+      var op, va, vb;
       if (instr.mOpc === 0) {
-        process.stdout.write(Disasm.ADV_OPC_DISASM[instr.mValA.raw()]);
-        process.stdout.write(" ");
-        Disasm.ppValue(instr.mValB);
-        return process.stdout.write("\n");
+        op = Disasm.ADV_OPC_DISASM[instr.mValA.raw()];
+        va = Disasm.ppValue(instr.mValB);
+        return "" + op + " " + va;
       } else {
-        process.stdout.write(Disasm.OPC_DISASM[instr.mOpc]);
-        process.stdout.write(" ");
-        Disasm.ppValue(instr.mValA);
-        process.stdout.write(", ");
-        Disasm.ppValue(instr.mValB);
-        return process.stdout.write("\n");
+        op = Disasm.OPC_DISASM[instr.mOpc];
+        va = Disasm.ppValue(instr.mValA);
+        vb = Disasm.ppValue(instr.mValB);
+        return "" + op + " " + va + ", " + vb;
       }
     };
 
     Disasm.ppValue = function(val) {
-      var enc;
+      var enc, lit, reg, v;
       enc = val.raw();
+      v = "";
       if ((0x00 <= enc && enc <= 0x07)) {
-        return process.stdout.write(Disasm.REG_DISASM[enc]);
+        return v = Disasm.REG_DISASM[enc];
       } else if ((0x08 <= enc && enc <= 0x0f)) {
-        process.stdout.write("[");
-        process.stdout.write(Disasm.REG_DISASM[enc - 0x8]);
-        return process.stdout.write("]");
+        reg = Disasm.REG_DISASM[enc - 0x8];
+        return v = "[" + reg + "]";
       } else if ((0x10 <= enc && enc <= 0x17)) {
-        process.stdout.write("[");
-        process.stdout.write("0x" + val.mNext.toString(16));
-        process.stdout.write("+");
-        process.stdout.write(Disasm.REG_DISASM[enc - 0x10]);
-        return process.stdout.write("]");
+        lit = val.mNext.toString(16);
+        reg = Disasm.REG_DISASM[enc - 0x10];
+        return v = "[0x" + lit + "+" + reg + "]";
       } else if (enc === 0x18) {
-        return process.stdout.write("POP");
+        return v = "POP";
       } else if (enc === 0x19) {
-        return process.stdout.write("PEEK");
+        return v = "PEEK";
       } else if (enc === 0x1a) {
-        return process.stdout.write("PUSH");
+        return v = "PUSH";
       } else if (enc === 0x1b) {
-        return process.stdout.write("SP");
+        return v = "SP";
       } else if (enc === 0x1c) {
-        return process.stdout.write("PC");
+        return v = "PC";
       } else if (enc === 0x1d) {
-        return process.stdout.write("O");
+        return v = "O";
       } else if (enc === 0x1e) {
-        process.stdout.write("[");
-        process.stdout.write("0x" + val.mNext.toString(16));
-        return process.stdout.write("]");
+        lit = val.mNext.toString(16);
+        return v = "[0x" + lit + "]";
       } else if (enc === 0x1f) {
-        return process.stdout.write("0x" + val.mNext.toString(16));
+        lit = val.mNext.toString(16);
+        return "0x" + lit;
       } else if ((0x20 <= enc && enc <= 0x3f)) {
-        return process.stdout.write("0x" + (enc - 0x20).toString(16));
+        lit = val.mNext.toString(16);
+        return "0x" + ((enc - 0x20).toString(16));
       }
     };
 
