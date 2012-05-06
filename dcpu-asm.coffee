@@ -76,6 +76,12 @@ class LabelValue extends Value
       return false
     return 0x1f
 
+class RawValue extends Value
+  constructor: (asm, raw) ->
+    @mAsm = asm
+    @mRaw = raw
+  encode: () -> @mRaw
+
 class Instruction
   constructor: (asm, opc, vals) ->
     @mAsm = asm
@@ -85,9 +91,6 @@ class Instruction
     @mVals = vals
 
   emit: (stream) ->
-    if @mOp is dasm.Disasm.OPC_ADV
-      # TODO Adanced opcode
-      ""
     enc = (v.encode() for v in @mVals)
     instr = @mOp | (enc[0] << 4) | (enc[1] << 10)
     stream.push instr
@@ -110,15 +113,6 @@ class Assembler
 
   incPc: () -> ++@mPc
 
-  processMemOp: (tok) ->
-    if isNumber tok
-      # Literal memop
-      # Determine if it can fit in the instr or not
-      ""
-    else if isReg tok
-      # reg offset
-      ""
-
   processValue: (val) ->
     val = val.trim()
     reg_regex = ///^([a-zA-Z]+)$///
@@ -132,9 +126,12 @@ class Assembler
       # See if its a basic or special register. if not, assume label
       #
       switch match[1]
-        when "PC" then new SpecialValue @, 0x1c
-        when "SP" then new SpecialValue @, 0x1b
-        when "O" then  new SpecialValue @, 0x1d
+        when "POP"    then new SpecialValue @, 0x18
+        when "PEEK"   then new SpecialValue @, 0x19
+        when "PUSH"   then new SpecialValue @, 0x1a
+        when "SP"     then new SpecialValue @, 0x1b
+        when "PC"     then new SpecialValue @, 0x1c
+        when "O"      then new SpecialValue @, 0x1d
         else
           regid = dasm.Disasm.REG_DISASM.indexOf match[1]
           if regid == -1
@@ -168,6 +165,11 @@ class Assembler
       ),(             #ValB    
         [^,]+
     )///
+    adv_regex = ///
+      (\w+)\x20       #Opcode
+      ( 
+        [^,]+         #ValA
+    )///
     #
     # Either:
     #   > Label
@@ -192,6 +194,15 @@ class Assembler
       valA = @processValue valA
       valB = @processValue valB
       @mInstrs.push new Instruction @,enc, [valA, valB]
+    else if match = line.match adv_regex
+      [opc, valA] = match[1..2]
+      if opc not in dasm.Disasm.ADV_OPC_DISASM
+        console.log "ERROR: Unknown OpCode: #{opc}"
+      enc = dasm.Disasm.ADV_OPC_DISASM.indexOf opc
+      @incPc()
+      valB = @processValue valA
+      valA = new RawValue @, enc
+      @mInstrs.push new Instruction @, 0, [valA,valB]
     else
       console.log "Syntax Error"
       console.log line
