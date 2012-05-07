@@ -26,11 +26,11 @@
       str = n.toString(16);
       p = "";
       if (pad) {
-        for (_ = _i = 0, _ref = 3 - str.length; 0 <= _ref ? _i <= _ref : _i >= _ref; _ = 0 <= _ref ? ++_i : --_i) {
+        for (_ = _i = 0, _ref = 4 - str.length; 0 <= _ref ? _i <= _ref : _i >= _ref; _ = 0 <= _ref ? ++_i : --_i) {
           p = p + "0";
         }
       }
-      return p + str;
+      return p.slice(1) + str;
     };
 
     Disasm.ppInstr = function(instr) {

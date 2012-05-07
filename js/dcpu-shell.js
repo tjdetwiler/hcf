@@ -64,10 +64,19 @@
       asm = this.asm;
       cpu = this.dcpu;
       return fs.readFile(fn, "utf8", function(err, data) {
-        var prog;
+        var prog, txt;
         if (!err) {
           prog = asm.assemble(data);
-          return cpu.loadBinary(prog);
+          if (toks[1] != null) {
+            txt = JSON.stringify(prog);
+            return fs.writeFile(toks[1], txt, function(err) {
+              if (err) {
+                return console.log("Error writing out binary");
+              }
+            });
+          } else {
+            return cpu.loadBinary(prog);
+          }
         } else {
           return console.log("Error assembling file");
         }
