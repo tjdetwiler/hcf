@@ -1,0 +1,25 @@
+#!/usr/bin/env node
+
+fs = require("fs");
+dasm = require("../js/dcpu-asm.js");
+
+asm = new dasm.Assembler();
+file = process.argv[2];
+
+if (file === undefined) {
+  console.log("no input files.");
+  process.exit(1);
+}
+
+fs.readFile(file, "utf8", function(err,data) {
+  if (!err) {
+    prog = asm.assemble(data);
+    json = JSON.stringify(prog);
+    fs.writeFile("tmp.json", json, function(err) {
+      if (err)
+        console.log("Error writing out file");
+    });
+  } else {
+    console.log("Unable to read " + file + ".");
+  }
+});
