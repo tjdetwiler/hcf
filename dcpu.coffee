@@ -129,31 +129,51 @@ class Instr
       when Dcpu16.OPC_SET
         valA.set valB.get()
       when Dcpu16.OPC_ADD
-        valA.set valA.get() + valB.get()
         @mCycles += 1
+        v = valA.get() + valB.get()
         # TODO: check overflow
+        if v > 0xffff
+          @mCpu.regO 1
+          v -= 0xffff
+        else
+          @mCpu.regO 0
+        valA.set v
       when Dcpu16.OPC_SUB
-        valA.set valA.get() - valB.get()
         @mCycles += 1
-        # TODO: check underflow
+        v = valA.get() - valB.get()
+        if v < 0
+          @mCpu.regO 0xffff
+          v += 0xffff
+        else
+          @mCpu.regO 0
+        valA.set v
       when Dcpu16.OPC_MUL
-        valA.set valA.get() * valB.get()
         @mCycles += 1
-        # TODO: set overflow
+        v = valA.get() * valB.get()
+        valA.set v & 0xffff
+        @mCpu.regO ((v>>16) & 0xffff)
       when Dcpu16.OPC_DIV
-        valA.set valA.get() / valB.get()
         @mCycles += 2
-        # TODO: set overflow (div by zero)
+        if valB.get() is 0
+          regA.set 0
+        else 
+          v = valA.get() / valB.get()
+          valA.set v & 0xffff
+          @mCpu.regO (((valA.get() << 16)/valB.get)&0xffff)
       when Dcpu16.OPC_MOD
-        valA.set valA.get() % valB.get()
         @mCycles += 2
-        # TODO: set overflow
+        if valB.get() is 0
+          regA.set 0
+        else
+          valA.set valA.get() % valB.get()
       when Dcpu16.OPC_SHL
+        @mCycles += 1
         valA.set valA.get() << valB.get()
-        @mCycles += 1
+        @mCpu.regO (((valA.get()<<valB.get())>>16)&0xffff)
       when Dcpu16.OPC_SHR
-        valA.set valA.get() >> valB.get()
         @mCycles += 1
+        valA.set valA.get() >> valB.get()
+        @mCpu.regO (((valA.get() << 16)>>valB.get())&0xffff)
       when Dcpu16.OPC_AND
         valA.set valA.get() & valB.get()
       when Dcpu16.OPC_BOR
