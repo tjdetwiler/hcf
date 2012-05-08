@@ -10,7 +10,9 @@ prog = [
     0x9037, 0x61c1, 0x7dc1, 0x001a, 0x0000, 0x0000, 0x0000, 0x0000
 ]
 cpu.loadBinary prog
-
+cpu.onPostExec (i) ->
+  disasm = dasm.Disasm.ppInstr i
+  $("#lastInstr").html disasm
 
 regs = []
 
@@ -32,6 +34,7 @@ $ () ->
     ($ "#RegSP"),
     ($ "#RegO")]
   updateRegs()
+
   $("#btnStep").click (()->
     cpu.step()
     updateRegs())

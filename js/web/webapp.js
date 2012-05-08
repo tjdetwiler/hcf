@@ -14,6 +14,12 @@
 
   cpu.loadBinary(prog);
 
+  cpu.onPostExec(function(i) {
+    var disasm;
+    disasm = dasm.Disasm.ppInstr(i);
+    return $("#lastInstr").html(disasm);
+  });
+
   regs = [];
 
   updateRegs = function() {
