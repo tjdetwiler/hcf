@@ -10,8 +10,6 @@
 
 Module = {}
 
-dcpu = require './dcpu'
-
 class Disasm
   @OPC_DISASM = [
    "ADV", "SET", "ADD", "SUB", "MUL", "DIV", "MOD", "SHL",
@@ -33,16 +31,17 @@ class Disasm
       p = p + "0" for _ in [0..4-str.length]
     p[1..]+str
 
-  @ppInstr: (instr) ->
-    if instr.mOpc == 0
+  @ppInstr: (i) ->
+    if i.opc() == 0
       # Adv Opc
-      op = Disasm.ADV_OPC_DISASM[instr.mValA.raw()]
-      va = Disasm.ppValue instr.mValB
+      op = Disasm.ADV_OPC_DISASM[i.valA().raw()]
+      va = Disasm.ppValue i.valB()
       "#{op} #{va}"
     else
-      op = Disasm.OPC_DISASM[instr.mOpc]
-      va = Disasm.ppValue instr.mValA
-      vb = Disasm.ppValue instr.mValB
+      op = Disasm.OPC_DISASM[i.opc()]
+      console.lo
+      va = Disasm.ppValue i.valA()
+      vb = Disasm.ppValue i.valB()
       "#{op} #{va}, #{vb}"
 
   @ppValue: (val) ->
@@ -74,10 +73,11 @@ class Disasm
       v = "[0x#{lit}]"
     else if enc == 0x1f
       lit = val.mNext.toString 16
-      "0x#{lit}"
+      v = "0x#{lit}"
     else if 0x20 <= enc <= 0x3f
       lit = val.mNext.toString 16
-      "0x#{(enc - 0x20).toString 16}"
+      v = "0x#{(enc - 0x20).toString 16}"
+    return v
 
 
 exports.Disasm = Disasm

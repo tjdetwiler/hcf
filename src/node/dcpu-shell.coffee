@@ -62,6 +62,16 @@ class Dcpu16Shell extends cmd.Cmd
         return console.log "Error assembling file"
   
   #
+  # Disassemble
+  #
+  do_disasm: (toks) ->
+    addr = if toks[0]? then parseInt toks[0] else 0
+    while @dcpu.readMem addr
+      d = dasm.Disasm.ppInstr addr
+      console.log "#{dasm.Disasm.fmtHex addr}| #{d.text}"
+      addr += d.len
+
+  #
   # Run the simulation
   #
   do_run: (toks) ->

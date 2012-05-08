@@ -5,230 +5,23 @@
 # DCPU-16 Core Implementation.
 #
 # In order to make this suitable for web-deployment, this file should not
-# rely on any node.js library functions, and should be kept small.
+# rely on any node.js library functions.
 #
 Module = {}
 
-class Value
-  constructor: (cpu, enc) ->
-    @mCpu = cpu
-    @isMem = false
-    @isReg = false
-    @mEncoding = enc
+decode = require './dcpu-decode'
 
-    @mNext=0
-
-    #
-    # Decode Value
-    #
-    if 0x00 <= enc <= 0x07
-      @isReg = true
-      @mValue = enc
-    else if 0x08 <= enc <= 0x0f
-      @isMem = true
-      @mValue = @mCpu.readReg enc - 0x08
-    else if 0x10 <= enc <= 0x17
-      @isMem = true
-      @mNext = @mCpu.nextWord()
-      @mValue = @mNext + @mCpu.readReg enc - 0x10
-    else if enc == 0x18
-      @isMem = true
-      @mValue = @mCpu.pop()
-    else if enc == 0x19
-      @isMem = true
-      @mValue = @mCpu.peek()
-    else if enc == 0x1a
-      @isMem = true
-      @mValue = @mCpu.push()
-    else if enc == 0x1b
-      @isReg = true
-      @mValue = Dcpu16.REG_SP
-    else if enc == 0x1c
-      @isReg = true
-      @mValue = Dcpu16.REG_PC
-    else if enc == 0x1d
-      @isReg = true
-      @mValue = Dcpu16.REG_O
-    else if enc == 0x1e
-      @isMem = true
-      @mNext = @mCpu.nextWord()
-      @mValue = @mNext
-    else if enc == 0x1f
-      @mNext = @mCpu.nextWord()
-      @mValue = @mNext
-    else if 0x20 <= enc <= 0x3f
-      @mValue = enc - 0x20
-
-  get: () ->
-    if @isMem
-      @mCpu.readMem @mValue
-    else if @isReg
-      @mCpu.readReg @mValue
-    else
-      @mValue
-    
-  set: (val) ->
-    if @isMem
-      @mCpu.writeMem @mValue, val
-    else if @isReg
-      @mCpu.writeReg @mValue, val
-    else
-      # error
-      console.log "Error: Attempt to 'set' a literal value"
-
-  raw: () -> @mEncoding
-
-
-class Instr
-  #
-  # Constants... there's probably (hopefully?) a better way to do this.
-  #
-  OPCODE_MASK: () -> 0x000f
-  VALA_MASK  : () -> 0x03f0
-  VALB_MASK  : () -> 0xfc00
-
-  constructor: (cpu, enc) ->
-    @mCpu = cpu
-    [@mOpc, @mValA, @mValB] = @decode enc
-
-  decode: (instr) ->
-    opcode = instr & @OPCODE_MASK()
-    valA   = (instr & @VALA_MASK()) >> 4
-    valB   = (instr & @VALB_MASK()) >> 10
-    [opcode, new Value(@mCpu,valA), new Value(@mCpu,valB)]
-
-  #
-  # Executes an advanced instruction
-  #
-  execAdv: (opc, valA) ->
-    switch opc
-      when Dcpu16.ADV_JSR
-        addr = @mCpu.push()
-        @mCpu.mMemory[addr] = @mCpu.mRegs[Dcpu16.REG_PC]
-        @mCpu.mRegs[Dcpu16.REG_PC] = valA.get()
-
-  #
-  # Executes an instruction
-  #
-  exec: () ->
-    valA = @mValA
-    valB = @mValB
-
-    #
-    # Fetching the first word of the instr takes 1 cycle, so the
-    # instructions only need to account for any additional cycles.
-    #
-    # Values will add cycles themselves when they're fetched.
-    #
-    switch @mOpc
-      when Dcpu16.OPC_ADV
-        @execAdv valA.raw(), valB
-      when Dcpu16.OPC_SET
-        valA.set valB.get()
-      when Dcpu16.OPC_ADD
-        @mCycles += 1
-        v = valA.get() + valB.get()
-        # TODO: check overflow
-        if v > 0xffff
-          @mCpu.regO 1
-          v -= 0xffff
-        else
-          @mCpu.regO 0
-        valA.set v
-      when Dcpu16.OPC_SUB
-        @mCycles += 1
-        v = valA.get() - valB.get()
-        if v < 0
-          @mCpu.regO 0xffff
-          v += 0xffff
-        else
-          @mCpu.regO 0
-        valA.set v
-      when Dcpu16.OPC_MUL
-        @mCycles += 1
-        v = valA.get() * valB.get()
-        valA.set v & 0xffff
-        @mCpu.regO ((v>>16) & 0xffff)
-      when Dcpu16.OPC_DIV
-        @mCycles += 2
-        if valB.get() is 0
-          regA.set 0
-        else 
-          v = valA.get() / valB.get()
-          valA.set v & 0xffff
-          @mCpu.regO (((valA.get() << 16)/valB.get)&0xffff)
-      when Dcpu16.OPC_MOD
-        @mCycles += 2
-        if valB.get() is 0
-          regA.set 0
-        else
-          valA.set valA.get() % valB.get()
-      when Dcpu16.OPC_SHL
-        @mCycles += 1
-        valA.set valA.get() << valB.get()
-        @mCpu.regO (((valA.get()<<valB.get())>>16)&0xffff)
-      when Dcpu16.OPC_SHR
-        @mCycles += 1
-        valA.set valA.get() >> valB.get()
-        @mCpu.regO (((valA.get() << 16)>>valB.get())&0xffff)
-      when Dcpu16.OPC_AND
-        valA.set valA.get() & valB.get()
-      when Dcpu16.OPC_BOR
-        valA.set valA.get() | valB.get()
-      when Dcpu16.OPC_XOR
-        valA.set valA.get() ^ valB.get()
-      when Dcpu16.OPC_IFE
-        if valA.get() == valB.get()
-          @mCycles += 2
-        else
-          @mCpu.mSkipNext=true
-          @mCycles += 1
-      when Dcpu16.OPC_IFN
-        if valA.get() != valB.get()
-          @mCycles += 2
-        else
-          @mCpu.mSkipNext=true
-          @mCycles += 1
-      when Dcpu16.OPC_IFG
-        if valA.get() > valB.get()
-          @mCycles += 2
-        else
-          @mCpu.mSkipNext=true
-          @mCycles += 1
-      when Dcpu16.OPC_IFB
-        if (valA.get() & valB.get()) != 0
-          @mCycles += 2
-        else
-          @mCpu.mSkipNext=true
-          @mCycles += 1
+Value = decode.Value
+Instr = decode.Instr
 
 class Dcpu16
-  #
-  # Opcodes
-  #
-  [@OPC_ADV, @OPC_SET, @OPC_ADD, @OPC_SUB,
-   @OPC_MUL, @OPC_DIV, @OPC_MOD, @OPC_SHL,
-   @OPC_SHR, @OPC_AND, @OPC_BOR, @OPC_XOR,
-   @OPC_IFE, @OPC_IFN, @OPC_IFG, @OPC_IFB] = [0x0..0xf]
-
-  #
-  # Advanced Opcodes
-  #
-  [@ADV_JSR] = [1]
-
-  #
-  # Register Indicies
-  #
-  [@REG_A, @REG_B, @REG_C, @REG_X,  @REG_Y,
-   @REG_Z, @REG_I, @REG_J, @REG_PC, @REG_SP,
-   @REG_O] = [0x0..0xa]
 
   constructor: (program = []) ->
     @mCycles = 0
     @mRegs = []
     @mSkipNext = false
     @mRegs[x]   = 0 for x in [0..0xf]
-    @mRegs[Dcpu16.REG_SP] = 0xffff
+    @mRegs[Value.REG_SP] = 0xffff
     @mMemory = (0 for x in [0..0xffff])
     @mMemory[i] = x for x,i in program
  
@@ -246,21 +39,21 @@ class Dcpu16
   writeReg: (n,val) -> @mRegs[n] = val
   readMem:  (addr) -> @mMemory[addr]
   writeMem: (addr, val) -> @mMemory[addr] = val
-  push:     () -> --@mRegs[Dcpu16.REG_SP]
-  peek:     () -> @mRegs[Dcpu16.REG_SP]
-  pop:      () -> @mRegs[Dcpu16.REG_SP]++
+  push:     () -> --@mRegs[Value.REG_SP]
+  peek:     () -> @mRegs[Value.REG_SP]
+  pop:      () -> @mRegs[Value.REG_SP]++
   reg:      (n,v) -> if v? then @mRegs[n] = v else @mRegs[n]
-  regA:     (v) -> @reg  Dcpu16.REG_A, v
-  regB:     (v) -> @reg  Dcpu16.REG_B, v
-  regC:     (v) -> @reg  Dcpu16.REG_C, v
-  regX:     (v) -> @reg  Dcpu16.REG_X, v
-  regY:     (v) -> @reg  Dcpu16.REG_Y, v
-  regZ:     (v) -> @reg  Dcpu16.REG_Z, v
-  regI:     (v) -> @reg  Dcpu16.REG_I, v
-  regJ:     (v) -> @reg  Dcpu16.REG_J, v
-  regPC:    (v) -> @reg  Dcpu16.REG_PC,v
-  regSP:    (v) -> @reg  Dcpu16.REG_SP,v
-  regO:     (v) -> @reg  Dcpu16.REG_O, v
+  regA:     (v) -> @reg  Value.REG_A, v
+  regB:     (v) -> @reg  Value.REG_B, v
+  regC:     (v) -> @reg  Value.REG_C, v
+  regX:     (v) -> @reg  Value.REG_X, v
+  regY:     (v) -> @reg  Value.REG_Y, v
+  regZ:     (v) -> @reg  Value.REG_Z, v
+  regI:     (v) -> @reg  Value.REG_I, v
+  regJ:     (v) -> @reg  Value.REG_J, v
+  regPC:    (v) -> @reg  Value.REG_PC,v
+  regSP:    (v) -> @reg  Value.REG_SP,v
+  regO:     (v) -> @reg  Value.REG_O, v
 
   #
   # Loads a ramdisk. Binary should be a JS array of 2B words.
@@ -273,7 +66,7 @@ class Dcpu16
   #
   nextWord: () ->
     @mCycles++
-    pc = @mRegs[Dcpu16.REG_PC]++
+    pc = @mRegs[Value.REG_PC]++
     @mMemory[pc]
 
   #
@@ -287,7 +80,7 @@ class Dcpu16
       return @step()
 
     if @mPreExec? then @mPreExec i
-    i.exec()
+    @exec i.opc(), i.valA(), i.valB()
     if @mPostExec? then @mPostExec i
 
   #
@@ -301,5 +94,104 @@ class Dcpu16
   # Stop the CPU
   #
   stop: () -> @mRun = false
+
+  #
+  # Executes an advanced instruction
+  #
+  execAdv: (opc, valA) ->
+    switch opc
+      when Instr.ADV_JSR
+        addr = @push()
+        @mMemory[addr] = @mRegs[Value.REG_PC]
+        @mRegs[Value.REG_PC] = valA.get()
+
+  exec: (opc, valA, valB) ->
+    #
+    # Fetching the first word of the instr takes 1 cycle, so the
+    # instructions only need to account for any additional cycles.
+    #
+    # Values will add cycles themselves when they're fetched.
+    #
+    switch opc
+      when Instr.OPC_ADV
+        @execAdv valA.raw(), valB
+      when Instr.OPC_SET
+        valA.set valB.get()
+      when Instr.OPC_ADD
+        @mCycles += 1
+        v = valA.get() + valB.get()
+        if v > 0xffff
+          @regO 1
+          v -= 0xffff
+        else
+          @regO 0
+        valA.set v
+      when Instr.OPC_SUB
+        @mCycles += 1
+        v = valA.get() - valB.get()
+        if v < 0
+          @regO 0xffff
+          v += 0xffff
+        else
+          @regO 0
+        valA.set v
+      when Instr.OPC_MUL
+        @mCycles += 1
+        v = valA.get() * valB.get()
+        valA.set v & 0xffff
+        @regO ((v>>16) & 0xffff)
+      when Instr.OPC_DIV
+        @mCycles += 2
+        if valB.get() is 0
+          regA.set 0
+        else 
+          v = valA.get() / valB.get()
+          valA.set v & 0xffff
+          @regO (((valA.get() << 16)/valB.get)&0xffff)
+      when Instr.OPC_MOD
+        @mCycles += 2
+        if valB.get() is 0
+          regA.set 0
+        else
+          valA.set valA.get() % valB.get()
+      when Instr.OPC_SHL
+        @mCycles += 1
+        valA.set valA.get() << valB.get()
+        @regO (((valA.get()<<valB.get())>>16)&0xffff)
+      when Instr.OPC_SHR
+        @mCycles += 1
+        valA.set valA.get() >> valB.get()
+        @regO (((valA.get() << 16)>>valB.get())&0xffff)
+      when Instr.OPC_AND
+        valA.set valA.get() & valB.get()
+      when Instr.OPC_BOR
+        valA.set valA.get() | valB.get()
+      when Instr.OPC_XOR
+        valA.set valA.get() ^ valB.get()
+      when Instr.OPC_IFE
+        if valA.get() == valB.get()
+          @mCycles += 2
+        else
+          @mSkipNext=true
+          @mCycles += 1
+      when Instr.OPC_IFN
+        if valA.get() != valB.get()
+          @mCycles += 2
+        else
+          @mSkipNext=true
+          @mCycles += 1
+      when Instr.OPC_IFG
+        if valA.get() > valB.get()
+          @mCycles += 2
+        else
+          @mSkipNext=true
+          @mCycles += 1
+      when Instr.OPC_IFB
+        if (valA.get() & valB.get()) != 0
+          @mCycles += 2
+        else
+          @mSkipNext=true
+          @mCycles += 1
+
 
 exports.Dcpu16 = Dcpu16

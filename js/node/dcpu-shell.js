@@ -83,6 +83,18 @@
       });
     };
 
+    Dcpu16Shell.prototype.do_disasm = function(toks) {
+      var addr, d, _results;
+      addr = toks[0] != null ? parseInt(toks[0]) : 0;
+      _results = [];
+      while (this.dcpu.readMem(addr)) {
+        d = dasm.Disasm.ppInstr(addr);
+        console.log("" + (dasm.Disasm.fmtHex(addr)) + "| " + d.text);
+        _results.push(addr += d.len);
+      }
+      return _results;
+    };
+
     Dcpu16Shell.prototype.do_run = function(toks) {
       this.mTrace = false;
       return this.dcpu.run();
