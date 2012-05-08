@@ -7,9 +7,6 @@
 # This file should be made available for web-deployment, so no node.js library
 # fuctions should be used.
 #
-# TODO: Figure out how to do require and exports while still supporting
-#       browsers
-#
 
 Module = {}
 

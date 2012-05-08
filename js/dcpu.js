@@ -311,7 +311,7 @@
       return this.mRegs[Dcpu16.REG_SP]++;
     };
 
-    Dcpu16.prototype._r = function(v, n) {
+    Dcpu16.prototype.reg = function(n, v) {
       if (v != null) {
         return this.mRegs[n] = v;
       } else {
@@ -320,47 +320,47 @@
     };
 
     Dcpu16.prototype.regA = function(v) {
-      return this._r(v, Dcpu16.REG_A);
+      return this.reg(Dcpu16.REG_A, v);
     };
 
     Dcpu16.prototype.regB = function(v) {
-      return this._r(v, Dcpu16.REG_B);
+      return this.reg(Dcpu16.REG_B, v);
     };
 
     Dcpu16.prototype.regC = function(v) {
-      return this._r(v, Dcpu16.REG_C);
+      return this.reg(Dcpu16.REG_C, v);
     };
 
     Dcpu16.prototype.regX = function(v) {
-      return this._r(v, Dcpu16.REG_X);
+      return this.reg(Dcpu16.REG_X, v);
     };
 
     Dcpu16.prototype.regY = function(v) {
-      return this._r(v, Dcpu16.REG_Y);
+      return this.reg(Dcpu16.REG_Y, v);
     };
 
     Dcpu16.prototype.regZ = function(v) {
-      return this._r(v, Dcpu16.REG_Z);
+      return this.reg(Dcpu16.REG_Z, v);
     };
 
     Dcpu16.prototype.regI = function(v) {
-      return this._r(v, Dcpu16.REG_I);
+      return this.reg(Dcpu16.REG_I, v);
     };
 
     Dcpu16.prototype.regJ = function(v) {
-      return this._r(v, Dcpu16.REG_J);
+      return this.reg(Dcpu16.REG_J, v);
     };
 
     Dcpu16.prototype.regPC = function(v) {
-      return this._r(v, Dcpu16.REG_PC);
+      return this.reg(Dcpu16.REG_PC, v);
     };
 
     Dcpu16.prototype.regSP = function(v) {
-      return this._r(v, Dcpu16.REG_SP);
+      return this.reg(Dcpu16.REG_SP, v);
     };
 
     Dcpu16.prototype.regO = function(v) {
-      return this._r(v, Dcpu16.REG_O);
+      return this.reg(Dcpu16.REG_O, v);
     };
 
     Dcpu16.prototype.loadBinary = function(bin, base) {

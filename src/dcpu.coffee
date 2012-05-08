@@ -7,9 +7,6 @@
 # In order to make this suitable for web-deployment, this file should not
 # rely on any node.js library functions, and should be kept small.
 #
-# TODO: Figure out how to do require and exports while still supporting
-#       browsers
-#
 Module = {}
 
 class Value
@@ -252,18 +249,18 @@ class Dcpu16
   push:     () -> --@mRegs[Dcpu16.REG_SP]
   peek:     () -> @mRegs[Dcpu16.REG_SP]
   pop:      () -> @mRegs[Dcpu16.REG_SP]++
-  _r:       (v,n) -> if v? then @mRegs[n] = v else @mRegs[n]
-  regA:     (v) -> @_r v, Dcpu16.REG_A
-  regB:     (v) -> @_r v, Dcpu16.REG_B
-  regC:     (v) -> @_r v, Dcpu16.REG_C
-  regX:     (v) -> @_r v, Dcpu16.REG_X
-  regY:     (v) -> @_r v, Dcpu16.REG_Y
-  regZ:     (v) -> @_r v, Dcpu16.REG_Z
-  regI:     (v) -> @_r v, Dcpu16.REG_I
-  regJ:     (v) -> @_r v, Dcpu16.REG_J
-  regPC:    (v) -> @_r v, Dcpu16.REG_PC
-  regSP:    (v) -> @_r v, Dcpu16.REG_SP
-  regO:     (v) -> @_r v, Dcpu16.REG_O
+  reg:      (n,v) -> if v? then @mRegs[n] = v else @mRegs[n]
+  regA:     (v) -> @reg  Dcpu16.REG_A, v
+  regB:     (v) -> @reg  Dcpu16.REG_B, v
+  regC:     (v) -> @reg  Dcpu16.REG_C, v
+  regX:     (v) -> @reg  Dcpu16.REG_X, v
+  regY:     (v) -> @reg  Dcpu16.REG_Y, v
+  regZ:     (v) -> @reg  Dcpu16.REG_Z, v
+  regI:     (v) -> @reg  Dcpu16.REG_I, v
+  regJ:     (v) -> @reg  Dcpu16.REG_J, v
+  regPC:    (v) -> @reg  Dcpu16.REG_PC,v
+  regSP:    (v) -> @reg  Dcpu16.REG_SP,v
+  regO:     (v) -> @reg  Dcpu16.REG_O, v
 
   #
   # Loads a ramdisk. Binary should be a JS array of 2B words.

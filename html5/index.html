@@ -2,8 +2,49 @@
 <html>
 <head>
   <script type="text/javascript" src="../js/web/application.js"></script>
+  <link href='http://fonts.googleapis.com/css?family=PT+Mono' rel='stylesheet' type='text/css'/>
+  <style>
+    .reg{
+      font-family: 'PT Mono', sans-serif;
+    }
+  </style>
 </head>
 
 <body>
+
+<h2>Registers</h2>
+<table>
+<tr>
+  <td>A: </td>
+  <td id="RegA" class="reg"></td>
+  <td>B: </td>
+  <td id="RegB" class="reg"></td>
+  <td>C: </td>
+  <td id="RegC" class="reg"></td>
+</tr>
+<tr>
+  <td>X: </td>
+  <td id="RegX" class="reg"></td>
+  <td>Y: </td>
+  <td id="RegY" class="reg"></td>
+  <td>Z: </td>
+  <td id="RegZ" class="reg"></td>
+</tr>
+<tr>
+  <td>I: </td>
+  <td id="RegI" class="reg"></td>
+  <td>J: </td>
+  <td id="RegJ" class="reg"></td>
+</tr>
+<tr>
+  <td>PC: </td>
+  <td id="RegPC" class="reg"></td>
+  <td>SP: </td>
+  <td id="RegSP" class="reg"></td>
+  <td>O: </td>
+  <td id="RegO" class="reg"></td>
+</tr>
+</table>
+  <button id='btnStep'>Step</button>
 </body>
 </html>
