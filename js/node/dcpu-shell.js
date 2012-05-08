@@ -8,11 +8,11 @@
 
   cmd = require('./cmd');
 
-  dcpu = require('./dcpu');
+  dcpu = require('../dcpu');
 
-  dasm = require('./dcpu-disasm');
+  dasm = require('../dcpu-disasm');
 
-  asm = require('./dcpu-asm');
+  asm = require('../dcpu-asm');
 
   Dcpu16Shell = (function(_super) {
 

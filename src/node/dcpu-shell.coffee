@@ -9,9 +9,9 @@
 
 fs = require 'fs'
 cmd = require './cmd'
-dcpu = require './dcpu'
-dasm = require './dcpu-disasm'
-asm = require './dcpu-asm'
+dcpu = require '../dcpu'
+dasm = require '../dcpu-disasm'
+asm = require '../dcpu-asm'
 
 class Dcpu16Shell extends cmd.Cmd
   constructor: () ->
