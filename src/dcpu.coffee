@@ -56,7 +56,7 @@ class Dcpu16
   peek:     () -> @mMemory[@mRegs[Value.REG_SP]]
   pop:      () -> @mMemory[++@mRegs[Value.REG_SP]]
 
-  reg:      (n,v=0) -> if v? then @mRegs[n]=v else @mRegs[n]
+  reg:      (n,v=0) -> if v then @mRegs[n]=v else @mRegs[n]
   regA:     (v) -> @reg  Value.REG_A, v
   regB:     (v) -> @reg  Value.REG_B, v
   regC:     (v) -> @reg  Value.REG_C, v

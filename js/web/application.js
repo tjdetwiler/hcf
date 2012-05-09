@@ -9792,3 +9792,25 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
 
 });
 require("/webapp.coffee");
+ _results;
+    _results = [];
+    for (i = 0, _len = regs.length; i < _len; i++) {
+      v = regs[i];
+      _results.push(v.html('0x' + dasm.Disasm.fmtHex(cpu.reg(i))));
+    }
+    return _results;
+  };
+
+  $(function() {
+    regs = [$("#RegA"), $("#RegB"), $("#RegC"), $("#RegX"), $("#RegY"), $("#RegZ"), $("#RegI"), $("#RegJ"), $("#RegPC"), $("#RegSP"), $("#RegO")];
+    updateRegs();
+    return $("#btnStep").click((function() {
+      cpu.step();
+      return updateRegs();
+    }));
+  });
+
+}).call(this);
+
+});
+require("/webapp.coffee");

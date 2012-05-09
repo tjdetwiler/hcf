@@ -35,8 +35,9 @@ class Disasm
       p = p + "0" for _ in [0..4-str.length]
     p[1..]+str
 
-  @ppInstr: (stream) ->
-    i = new Instr stream
+  @ppNextInstr: (stream) -> @ppInstr new Instr stream
+
+  @ppInstr: (i) ->
     if i.opc() == 0
       if i.valA().raw() == 0
         return ""

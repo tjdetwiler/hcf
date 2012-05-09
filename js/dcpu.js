@@ -96,7 +96,7 @@
       if (v == null) {
         v = 0;
       }
-      if (v != null) {
+      if (v) {
         return this.mRegs[n] = v;
       } else {
         return this.mRegs[n];

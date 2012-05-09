@@ -35,9 +35,12 @@
       return p.slice(1) + str;
     };
 
-    Disasm.ppInstr = function(stream) {
-      var i, op, va, vb;
-      i = new Instr(stream);
+    Disasm.ppNextInstr = function(stream) {
+      return this.ppInstr(new Instr(stream));
+    };
+
+    Disasm.ppInstr = function(i) {
+      var op, va, vb;
       if (i.opc() === 0) {
         if (i.valA().raw() === 0) {
           return "";

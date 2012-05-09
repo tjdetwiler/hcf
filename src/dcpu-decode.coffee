@@ -119,6 +119,7 @@ class Instr
 
   constructor: (stream) ->
     @mIStream = stream
+    @mAddr = @mIStream.index()
     [@mOpc, @mValA, @mValB] = @decode @mIStream.nextWord()
 
   decode: (instr) ->
@@ -130,6 +131,7 @@ class Instr
   opc:  () -> @mOpc
   valA: () -> @mValA
   valB: () -> @mValB
+  addr: () -> @mAddr
 
   #
   # Constants... there's probably (hopefully?) a better way to do this.

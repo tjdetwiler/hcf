@@ -1,50 +1,95 @@
-
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <script type="text/javascript" src="../js/web/application.js"></script>
+  <link href="css/bootstrap.css" rel="stylesheet">
   <link href='http://fonts.googleapis.com/css?family=PT+Mono' rel='stylesheet' type='text/css'/>
+  <script type="text/javascript" src="../js/web/application.js"></script>
   <style>
-    .reg{
+    .mono{
       font-family: 'PT Mono', sans-serif;
+    }
+    body {
+      padding-top: 60px;
+    }
+    .current-instruction {
+      background-color: green
     }
   </style>
 </head>
 
 <body>
 
-<h2>Registers</h2>
-<table>
-<tr>
-  <td>A: </td>
-  <td id="RegA" class="reg"></td>
-  <td>B: </td>
-  <td id="RegB" class="reg"></td>
-  <td>C: </td>
-  <td id="RegC" class="reg"></td>
-</tr>
-<tr>
-  <td>X: </td>
-  <td id="RegX" class="reg"></td>
-  <td>Y: </td>
-  <td id="RegY" class="reg"></td>
-  <td>Z: </td>
-  <td id="RegZ" class="reg"></td>
-</tr>
-<tr>
-  <td>I: </td>
-  <td id="RegI" class="reg"></td>
-  <td>J: </td>
-  <td id="RegJ" class="reg"></td>
-</tr>
-<tr>
-  <td>PC: </td>
-  <td id="RegPC" class="reg"></td>
-  <td>SP: </td>
-  <td id="RegSP" class="reg"></td>
-  <td>O: </td>
-  <td id="RegO" class="reg"></td>
-</tr>
-</table>
+  <div class="navbar navbar-fixed-top">
+    <div class="navbar-inner">
+      <div class="container">
+        <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </a>
+        <a class="brand" href="#">DCPU-16 v1.1 Simulator</a>
+        <div class="nav-collapse">
+          <ul class="nav">
+            <li class="active"><a href="#">Home</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<div class="row">
+  <div class="span4 offset2">
+    <table class="table">
+    <thead>
+    <tr>
+      <th>Registers</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>A: </td>
+      <td id="RegA" class="reg mono"></td>
+      <td>B: </td>
+      <td id="RegB" class="reg mono"></td>
+      <td>C: </td>
+      <td id="RegC" class="reg mono"></td>
+    </tr>
+    <tr>
+      <td>X: </td>
+      <td id="RegX" class="reg mono"></td>
+      <td>Y: </td>
+      <td id="RegY" class="reg mono"></td>
+      <td>Z: </td>
+      <td id="RegZ" class="reg mono"></td>
+    </tr>
+    <tr>
+      <td>I: </td>
+      <td id="RegI" class="reg mono"></td>
+      <td>J: </td>
+      <td id="RegJ" class="reg mono"></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>PC: </td>
+      <td id="RegPC" class="reg mono"></td>
+      <td>SP: </td>
+      <td id="RegSP" class="reg mono"></td>
+      <td>O: </td>
+      <td id="RegO" class="reg mono"></td>
+    </tr>
+    </tbody>
+    </table>
+  </div>
+
+  <div class="span4 offset2">
+    <h3> Disassembly </h3>
+    <div id="disasm" class="mono">
+    </div>
+  </div>
+</div>
 <button id='btnStep'>Step</button>
 <div>
   <h3>Last Instruction</h3>
