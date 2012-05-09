@@ -12,6 +12,8 @@ Module = {}
 
 decode = require './dcpu-decode'
 
+Instr = decode.Instr
+
 class Disasm
   @OPC_DISASM = [
    "ADV", "SET", "ADD", "SUB", "MUL", "DIV", "MOD", "SHL",
@@ -33,9 +35,11 @@ class Disasm
       p = p + "0" for _ in [0..4-str.length]
     p[1..]+str
 
-  @ppInstr: (i) ->
+  @ppInstr: (stream) ->
+    i = new Instr stream
     if i.opc() == 0
-      # Adv Opc
+      if i.valA().raw() == 0
+        return ""
       op = Disasm.ADV_OPC_DISASM[i.valA().raw()]
       va = Disasm.ppValue i.valB()
       "#{op} #{va}"

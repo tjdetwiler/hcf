@@ -16,7 +16,7 @@ class IStream
     @mIndex = base
 
   nextWord: () -> @mStream[@mIndex++]
-  index: (v=0) -> if v? then @mIndex=v else @mIndex
+  index: (v=0) -> if v then @mIndex=v else @mIndex
 
 class Value
   #

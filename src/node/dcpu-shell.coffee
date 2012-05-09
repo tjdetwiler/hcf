@@ -10,8 +10,11 @@
 fs = require 'fs'
 cmd = require './cmd'
 dcpu = require '../dcpu'
-dasm = require '../dcpu-disasm'
 asm = require '../dcpu-asm'
+decode = require '../dcpu-decode'
+dasm = require '../dcpu-disasm'
+
+IStream = decode.IStream
 
 class Dcpu16Shell extends cmd.Cmd
   constructor: () ->
@@ -66,10 +69,11 @@ class Dcpu16Shell extends cmd.Cmd
   #
   do_disasm: (toks) ->
     addr = if toks[0]? then parseInt toks[0] else 0
-    while @dcpu.readMem addr
-      d = dasm.Disasm.ppInstr addr
-      console.log "#{dasm.Disasm.fmtHex addr}| #{d.text}"
-      addr += d.len
+    istream = new IStream @dcpu.mMemory, addr
+
+    while disasm = dasm.Disasm.ppInstr istream
+      console.log "#{dasm.Disasm.fmtHex addr} | #{disasm}"
+      addr = istream.index()
 
   #
   # Run the simulation
