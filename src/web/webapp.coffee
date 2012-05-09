@@ -34,7 +34,7 @@ updateDisasm = () ->
   while s = dasm.Disasm.ppNextInstr istream
     child = $ "<span
  id='pc#{addr}'
- class='instruction current-instruction'>
+ class='instruction'>
 #{dasm.Disasm.fmtHex addr} | #{s}</span><br>"
     parent.append child
     addr = istream.index()

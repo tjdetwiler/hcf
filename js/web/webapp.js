@@ -46,7 +46,7 @@
     istream = new decode.IStream(cpu.mMemory);
     _results = [];
     while (s = dasm.Disasm.ppNextInstr(istream)) {
-      child = $("<span id='pc" + addr + "' class='instruction current-instruction'>" + (dasm.Disasm.fmtHex(addr)) + " | " + s + "</span><br>");
+      child = $("<span id='pc" + addr + "' class='instruction'>" + (dasm.Disasm.fmtHex(addr)) + " | " + s + "</span><br>");
       parent.append(child);
       _results.push(addr = istream.index());
     }
