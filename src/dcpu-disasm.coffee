@@ -10,6 +10,8 @@
 
 Module = {}
 
+decode = require './dcpu-decode'
+
 class Disasm
   @OPC_DISASM = [
    "ADV", "SET", "ADD", "SUB", "MUL", "DIV", "MOD", "SHL",

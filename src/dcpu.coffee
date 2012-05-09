@@ -13,6 +13,7 @@ decode = require './dcpu-decode'
 
 Value = decode.Value
 Instr = decode.Instr
+IStream = decode.IStream
 
 class Dcpu16
 
@@ -24,6 +25,7 @@ class Dcpu16
     @mRegs[Value.REG_SP] = 0xffff
     @mMemory = (0 for x in [0..0xffff])
     @mMemory[i] = x for x,i in program
+    @mIStream = new IStream @mMemory
  
   #
   # Events
@@ -35,14 +37,26 @@ class Dcpu16
   #
   # Data Accessors
   #
-  readReg:  (n) -> @mRegs[n]
-  writeReg: (n,val) -> @mRegs[n] = val
+  readReg:  (n) ->
+    if n == Value.REG_PC
+      @regPC()
+    else
+      @mRegs[n]
+  writeReg: (n,val) ->
+    if n == Value.REG_PC
+      @regPC val
+    else
+      @mRegs[n] = val
   readMem:  (addr) -> @mMemory[addr]
   writeMem: (addr, val) -> @mMemory[addr] = val
-  push:     () -> --@mRegs[Value.REG_SP]
-  peek:     () -> @mRegs[Value.REG_SP]
-  pop:      () -> @mRegs[Value.REG_SP]++
-  reg:      (n,v) -> if v? then @mRegs[n] = v else @mRegs[n]
+  push:     (v) ->
+    @mMemory[@mRegs[Value.REG_SP]] = v
+    @mRegs[Value.REG_SP]-=1
+
+  peek:     () -> @mMemory[@mRegs[Value.REG_SP]]
+  pop:      () -> @mMemory[++@mRegs[Value.REG_SP]]
+
+  reg:      (n,v=0) -> if v? then @mRegs[n]=v else @mRegs[n]
   regA:     (v) -> @reg  Value.REG_A, v
   regB:     (v) -> @reg  Value.REG_B, v
   regC:     (v) -> @reg  Value.REG_C, v
@@ -51,9 +65,9 @@ class Dcpu16
   regZ:     (v) -> @reg  Value.REG_Z, v
   regI:     (v) -> @reg  Value.REG_I, v
   regJ:     (v) -> @reg  Value.REG_J, v
-  regPC:    (v) -> @reg  Value.REG_PC,v
   regSP:    (v) -> @reg  Value.REG_SP,v
   regO:     (v) -> @reg  Value.REG_O, v
+  regPC:    (v) -> @mIStream.index v
 
   #
   # Loads a ramdisk. Binary should be a JS array of 2B words.
@@ -62,18 +76,10 @@ class Dcpu16
     @mMemory[base+i] = x for x,i in bin
 
   #
-  # Fetch one word and increment the PC
-  #
-  nextWord: () ->
-    @mCycles++
-    pc = @mRegs[Value.REG_PC]++
-    @mMemory[pc]
-
-  #
   # Execute a Single Instruction
   #
   step: () ->
-    i = new Instr @, @nextWord()
+    i = new Instr @mIStream
     if @mSkipNext
       @mSkipNext = false
       if @mCondFail? then @mCondFail i
@@ -101,8 +107,7 @@ class Dcpu16
   execAdv: (opc, valA) ->
     switch opc
       when Instr.ADV_JSR
-        addr = @push()
-        @mMemory[addr] = @mRegs[Value.REG_PC]
+        @push(@mRegs[Value.REG_PC])
         @mRegs[Value.REG_PC] = valA.get()
 
   exec: (opc, valA, valB) ->
@@ -116,78 +121,78 @@ class Dcpu16
       when Instr.OPC_ADV
         @execAdv valA.raw(), valB
       when Instr.OPC_SET
-        valA.set valB.get()
+        valA.set @, valB.get @
       when Instr.OPC_ADD
         @mCycles += 1
-        v = valA.get() + valB.get()
+        v = valA.get(@) + valB.get(@)
         if v > 0xffff
           @regO 1
           v -= 0xffff
         else
           @regO 0
-        valA.set v
+        valA.set @,v
       when Instr.OPC_SUB
         @mCycles += 1
-        v = valA.get() - valB.get()
+        v = valA.get(@) - valB.get(@)
         if v < 0
           @regO 0xffff
           v += 0xffff
         else
           @regO 0
-        valA.set v
+        valA.set @,v
       when Instr.OPC_MUL
         @mCycles += 1
-        v = valA.get() * valB.get()
-        valA.set v & 0xffff
+        v = valA.get(@) * valB.get(@)
+        valA.set @, v & 0xffff
         @regO ((v>>16) & 0xffff)
       when Instr.OPC_DIV
         @mCycles += 2
-        if valB.get() is 0
+        if valB.get(@) is 0
           regA.set 0
         else 
-          v = valA.get() / valB.get()
-          valA.set v & 0xffff
+          v = valA.get(@) / valB.get(@)
+          valA.set @, v & 0xffff
           @regO (((valA.get() << 16)/valB.get)&0xffff)
       when Instr.OPC_MOD
         @mCycles += 2
-        if valB.get() is 0
+        if valB.get(@) is 0
           regA.set 0
         else
-          valA.set valA.get() % valB.get()
+          valA.set valA.get(@) % valB.get(@)
       when Instr.OPC_SHL
         @mCycles += 1
-        valA.set valA.get() << valB.get()
-        @regO (((valA.get()<<valB.get())>>16)&0xffff)
+        valA.set @, valA.get(@) << valB.get(@)
+        @regO (((valA.get(@)<<valB.get(@))>>16)&0xffff)
       when Instr.OPC_SHR
         @mCycles += 1
-        valA.set valA.get() >> valB.get()
-        @regO (((valA.get() << 16)>>valB.get())&0xffff)
+        valA.set @, valA.get(@) >> valB.get(@)
+        @regO (((valA.get(@) << 16)>>valB.get(@))&0xffff)
       when Instr.OPC_AND
-        valA.set valA.get() & valB.get()
+        valA.set @, valA.get(@) & valB.get(@)
       when Instr.OPC_BOR
-        valA.set valA.get() | valB.get()
+        valA.set @, valA.get(@) | valB.get(@)
       when Instr.OPC_XOR
-        valA.set valA.get() ^ valB.get()
+        valA.set @, valA.get(@) ^ valB.get(@)
       when Instr.OPC_IFE
-        if valA.get() == valB.get()
+        if valA.get(@) == valB.get(@)
           @mCycles += 2
         else
           @mSkipNext=true
           @mCycles += 1
       when Instr.OPC_IFN
-        if valA.get() != valB.get()
+        if valA.get(@) != valB.get(@)
           @mCycles += 2
         else
           @mSkipNext=true
           @mCycles += 1
       when Instr.OPC_IFG
-        if valA.get() > valB.get()
+        if valA.get(@) > valB.get(@)
           @mCycles += 2
         else
           @mSkipNext=true
           @mCycles += 1
       when Instr.OPC_IFB
-        if (valA.get() & valB.get()) != 0
+        if (valA.get(@) & valB.get(@)) != 0
           @mCycles += 2
         else
           @mSkipNext=true

@@ -9,6 +9,15 @@
 #
 Module = {}
 
+class IStream
+  constructor: (instrs, base=0) ->
+    @mStream = instrs
+    @mDecoded = []
+    @mIndex = base
+
+  nextWord: () -> @mStream[@mIndex++]
+  index: (v=0) -> if v? then @mIndex=v else @mIndex
+
 class Value
   #
   # Register Indicies
@@ -17,8 +26,11 @@ class Value
    @REG_Z, @REG_I, @REG_J, @REG_PC, @REG_SP,
    @REG_O] = [0x0..0xa]
 
-  constructor: (cpu, enc) ->
-    @mCpu = cpu
+  [@VAL_POP, @VAL_PEEK, @VAL_PUSH] = [0x18..0x1a]
+  [@VAL_SP, @VAL_PC, @VAL_O] = [0x1b..0x1d]
+
+  constructor: (stream, enc) ->
+    @mIStream = stream
     @isMem = false
     @isReg = false
     @mEncoding = enc
@@ -32,54 +44,60 @@ class Value
       @mValue = enc
     else if 0x08 <= enc <= 0x0f
       @isMem = true
-      @mValue = @mCpu.readReg enc - 0x08
     else if 0x10 <= enc <= 0x17
       @isMem = true
-      @mNext = @mCpu.nextWord()
-      @mValue = @mNext + @mCpu.readReg enc - 0x10
-    else if enc == 0x18
-      @isMem = true
-      @mValue = @mCpu.pop()
-    else if enc == 0x19
-      @isMem = true
-      @mValue = @mCpu.peek()
-    else if enc == 0x1a
-      @isMem = true
-      @mValue = @mCpu.push()
-    else if enc == 0x1b
+      @mNext = @mIStream.nextWord()
+    else if enc == Value.VAL_POP
+      ""
+    else if enc == Value.VAL_PEEK
+      ""
+    else if enc == Value.VAL_PUSH
+      ""
+    else if enc == Value.VAL_SP
       @isReg = true
       @mValue = Value.REG_SP
-    else if enc == 0x1c
+    else if enc == Value.VAL_PC
       @isReg = true
       @mValue = Value.REG_PC
-    else if enc == 0x1d
+    else if enc == Value.VAL_O
       @isReg = true
       @mValue = Value.REG_O
     else if enc == 0x1e
       @isMem = true
-      @mNext = @mCpu.nextWord()
+      @mNext = @mIStream.nextWord()
       @mValue = @mNext
     else if enc == 0x1f
-      @mNext = @mCpu.nextWord()
+      @mNext = @mIStream.nextWord()
       @mValue = @mNext
     else if 0x20 <= enc <= 0x3f
       @mValue = enc - 0x20
 
-  get: () ->
+  get: (cpu) ->
     if @isMem
-      @mCpu.readMem @mValue
+      cpu.readMem @mValue
     else if @isReg
-      @mCpu.readReg @mValue
+      cpu.readReg @mValue
+    else if @mEncoding is Value.VAL_POP
+      cpu.pop()
+    else if @mEncoding is Value.VAL_PUSH
+      console.log "ERROR: Trying to 'get' PUSH"
+    else if @mEncoding is Value.VAL_PEEK
+      cpu.peek()
     else
       @mValue
     
-  set: (val) ->
+  set: (cpu,val) ->
     if @isMem
-      @mCpu.writeMem @mValue, val
+      cpu.writeMem @mValue, val
     else if @isReg
-      @mCpu.writeReg @mValue, val
+      cpu.writeReg @mValue, val
+    else if @mEncoding is Value.VAL_POP
+      console.log "ERROR: Trying to 'set' POP"
+    else if @mEncoding is Value.VAL_PUSH
+      cpu.push val
+    else if @mEncoding is Value.VAL_PEEK
+      console.log "ERROR: Trying to 'set' PEEK"
     else
-      # error
       console.log "Error: Attempt to 'set' a literal value"
 
   raw: () -> @mEncoding
@@ -99,15 +117,15 @@ class Instr
   #
   [@ADV_RSV, @ADV_JSR] = [0..1]
 
-  constructor: (cpu, enc) ->
-    @mCpu = cpu
-    [@mOpc, @mValA, @mValB] = @decode enc
+  constructor: (stream) ->
+    @mIStream = stream
+    [@mOpc, @mValA, @mValB] = @decode @mIStream.nextWord()
 
   decode: (instr) ->
     opcode = instr & @OPCODE_MASK()
     valA   = (instr & @VALA_MASK()) >> 4
     valB   = (instr & @VALB_MASK()) >> 10
-    [opcode, new Value(@mCpu,valA), new Value(@mCpu,valB)]
+    [opcode, new Value(@mIStream,valA), new Value(@mIStream,valB)]
 
   opc:  () -> @mOpc
   valA: () -> @mValA
@@ -123,3 +141,4 @@ class Instr
 
 exports.Value = Value
 exports.Instr = Instr
+exports.IStream = IStream
