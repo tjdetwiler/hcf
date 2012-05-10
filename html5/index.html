@@ -39,57 +39,99 @@
     </div>
   </div>
 
-<div class="row">
-  <div class="span4 offset2">
-    <table class="table">
-    <thead>
-    <tr>
-      <th>Registers</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr>
-      <td>A: </td>
-      <td id="RegA" class="reg mono"></td>
-      <td>B: </td>
-      <td id="RegB" class="reg mono"></td>
-      <td>C: </td>
-      <td id="RegC" class="reg mono"></td>
-    </tr>
-    <tr>
-      <td>X: </td>
-      <td id="RegX" class="reg mono"></td>
-      <td>Y: </td>
-      <td id="RegY" class="reg mono"></td>
-      <td>Z: </td>
-      <td id="RegZ" class="reg mono"></td>
-    </tr>
-    <tr>
-      <td>I: </td>
-      <td id="RegI" class="reg mono"></td>
-      <td>J: </td>
-      <td id="RegJ" class="reg mono"></td>
-      <td></td>
-      <td></td>
-    </tr>
-    <tr>
-      <td>PC: </td>
-      <td id="RegPC" class="reg mono"></td>
-      <td>SP: </td>
-      <td id="RegSP" class="reg mono"></td>
-      <td>O: </td>
-      <td id="RegO" class="reg mono"></td>
-    </tr>
-    </tbody>
-    </table>
-  </div>
-
-  <div class="span4 offset2">
-    <h3> Disassembly </h3>
-    <div id="disasm" class="mono">
+<div class="container">
+    <div class="span6">
+      <table class="table-compact">
+      <thead>
+      <tr>
+        <th colspan="4">Registers</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>A: </td>
+        <td id="RegA" class="reg mono"></td>
+        <td>B: </td>
+        <td id="RegB" class="reg mono"></td>
+        <td>C: </td>
+        <td id="RegC" class="reg mono"></td>
+      </tr>
+      <tr>
+        <td>X: </td>
+        <td id="RegX" class="reg mono"></td>
+        <td>Y: </td>
+        <td id="RegY" class="reg mono"></td>
+        <td>Z: </td>
+        <td id="RegZ" class="reg mono"></td>
+      </tr>
+      <tr>
+        <td>I: </td>
+        <td id="RegI" class="reg mono"></td>
+        <td>J: </td>
+        <td id="RegJ" class="reg mono"></td>
+        <td></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td>PC: </td>
+        <td id="RegPC" class="reg mono"></td>
+        <td>SP: </td>
+        <td id="RegSP" class="reg mono"></td>
+        <td>O: </td>
+        <td id="RegO" class="reg mono"></td>
+      </tr>
+      </tbody>
+      </table>
+      <table class="table-compact mono">
+      <thead>
+      <tr>
+        <th colspan="2">Memory Dump</th>
+        <th></th>
+        <th>Base:</th>
+        <th colspan="5"><input id="membase" type="text"/>
+      <tr>
+      <tr>
+        <th>Addr</th>
+        <th>0000</th>
+        <th>0001</th>
+        <th>0002</th>
+        <th>0003</th>
+        <th>0004</th>
+        <th>0005</th>
+        <th>0006</th>
+        <th>0007</th>
+      </tr>
+      </thead>
+      <tbody id="memdump-body">
+      </tbody>
+      </table>
+    <button id='btnStep' class="btn">Step</button>
+    <button id='btnAssemble' class='btn'>Assemble</button>
     </div>
-  </div>
+    <div class="span5">
+<textarea id="txtSource" class="mono" rows="25" cols="80">
+    SET A,0x30
+    SET [0x1000],0x20
+    SUB A,[0x1000]
+    IFN A,0x10
+    SET PC,crash
+    SET I,10
+    SET A,0x2000
+:loop
+    SET [0x2000+I],[A]
+    SUB I,1
+    IFN I,0
+    SET PC,loop
+    SET X,0x4
+    JSR testsub
+    SET PC,crash
+:testsub
+    SHL X,4
+    SET PC,POP
+:crash
+    SET PC,crash
+</textarea>
+    </div>
 </div>
-<button id='btnStep'>Step</button>
 </body>
 </html>

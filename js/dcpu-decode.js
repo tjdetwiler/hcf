@@ -22,10 +22,7 @@
     };
 
     IStream.prototype.index = function(v) {
-      if (v == null) {
-        v = 0;
-      }
-      if (v) {
+      if (v != null) {
         return this.mIndex = v;
       } else {
         return this.mIndex;

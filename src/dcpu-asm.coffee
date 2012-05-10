@@ -211,7 +211,6 @@ class Assembler
   assemble: (text) ->
     lines = text.split "\n"
     @processLine l for l in lines
-
     prog = []
     @emit prog
     prog
