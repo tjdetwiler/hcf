@@ -94,9 +94,11 @@ class Dcpu16
 
   #
   # Loads a ramdisk. Binary should be a JS array of 2B words.
+  # Also sets the PC to the first instruction of the binary.
   #
   loadBinary: (bin, base=0) ->
     @mMemory[base+i] = x for x,i in bin
+    @regPC base
 
   #
   # Execution Control

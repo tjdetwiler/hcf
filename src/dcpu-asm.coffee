@@ -9,17 +9,17 @@ Module = {}
 
 dasm = require './dcpu-disasm'
 
-class Value
-  emit: () -> undefined
+class ParseState
+  constructor: () -> ""
 
-class RegValue extends Value
+class RegValue
   constructor: (asm, reg) ->
     @mAsm = asm
     @mReg = reg
   emit: (stream) -> []
   encode: () -> @mReg
 
-class MemValue extends Value
+class MemValue
   constructor: (asm, reg=undefined, lit=undefined) ->
     @mAsm = asm
     @mReg = reg
@@ -36,7 +36,7 @@ class MemValue extends Value
     else
       console.log "ERROR: MemValue with corrupted state."
 
-class LitValue extends Value
+class LitValue
   constructor: (asm,lit) ->
     @mAsm = asm
     @mLit = lit
@@ -50,12 +50,12 @@ class LitValue extends Value
     else
       @mLit + 0x20
 
-class SpecialValue extends Value
+class SpecialValue
   constructor: (asm,enc) ->
     @mEnc = enc
   encode: () -> @mEnc
 
-class LabelValue extends Value
+class LabelValue
   constructor: (asm, lbl) ->
     @mAsm = asm
     @mLbl = lbl
@@ -76,7 +76,7 @@ class LabelValue extends Value
       return false
     return 0x1f
 
-class RawValue extends Value
+class RawValue
   constructor: (asm, raw) ->
     @mAsm = asm
     @mRaw = raw

@@ -9759,303 +9759,6 @@ return jQuery;
 })( window );}));
 });
 
-require.define("/dcpu.coffee", function (require, module, exports, __dirname, __filename) {
-(function() {
-  var Dcpu16, IStream, Instr, Module, Value, decode;
-
-  Module = {};
-
-  decode = require('./dcpu-decode');
-
-  Value = decode.Value;
-
-  Instr = decode.Instr;
-
-  IStream = decode.IStream;
-
-  Dcpu16 = (function() {
-
-    function Dcpu16(program) {
-      var i, x, _len;
-      if (program == null) program = [];
-      this.mCycles = 0;
-      this.mRegs = [];
-      this.mSkipNext = false;
-      for (x = 0; 0 <= 0xf ? x <= 0xf : x >= 0xf; 0 <= 0xf ? x++ : x--) {
-        this.mRegs[x] = 0;
-      }
-      this.mRegs[Value.REG_SP] = 0xffff;
-      this.mMemory = (function() {
-        var _results;
-        _results = [];
-        for (x = 0; 0 <= 0xffff ? x <= 0xffff : x >= 0xffff; 0 <= 0xffff ? x++ : x--) {
-          _results.push(0);
-        }
-        return _results;
-      })();
-      for (i = 0, _len = program.length; i < _len; i++) {
-        x = program[i];
-        this.mMemory[i] = x;
-      }
-      this.mIStream = new IStream(this.mMemory);
-    }
-
-    Dcpu16.prototype.onPreExec = function(fn) {
-      return this.mPreExec = fn;
-    };
-
-    Dcpu16.prototype.onPostExec = function(fn) {
-      return this.mPostExec = fn;
-    };
-
-    Dcpu16.prototype.onCondFail = function(fn) {
-      return this.mCondFail = fn;
-    };
-
-    Dcpu16.prototype.readReg = function(n) {
-      if (n === Value.REG_PC) {
-        return this.regPC();
-      } else {
-        return this.mRegs[n];
-      }
-    };
-
-    Dcpu16.prototype.writeReg = function(n, val) {
-      if (n === Value.REG_PC) {
-        return this.regPC(val);
-      } else {
-        return this.mRegs[n] = val;
-      }
-    };
-
-    Dcpu16.prototype.readMem = function(addr) {
-      return this.mMemory[addr];
-    };
-
-    Dcpu16.prototype.writeMem = function(addr, val) {
-      return this.mMemory[addr] = val;
-    };
-
-    Dcpu16.prototype.push = function(v) {
-      this.mMemory[this.mRegs[Value.REG_SP]] = v;
-      return this.mRegs[Value.REG_SP] -= 1;
-    };
-
-    Dcpu16.prototype.peek = function() {
-      return this.mMemory[this.mRegs[Value.REG_SP]];
-    };
-
-    Dcpu16.prototype.pop = function() {
-      return this.mMemory[++this.mRegs[Value.REG_SP]];
-    };
-
-    Dcpu16.prototype.reg = function(n, v) {
-      if (v == null) v = 0;
-      if (v) {
-        return this.mRegs[n] = v;
-      } else {
-        return this.mRegs[n];
-      }
-    };
-
-    Dcpu16.prototype.regA = function(v) {
-      return this.reg(Value.REG_A, v);
-    };
-
-    Dcpu16.prototype.regB = function(v) {
-      return this.reg(Value.REG_B, v);
-    };
-
-    Dcpu16.prototype.regC = function(v) {
-      return this.reg(Value.REG_C, v);
-    };
-
-    Dcpu16.prototype.regX = function(v) {
-      return this.reg(Value.REG_X, v);
-    };
-
-    Dcpu16.prototype.regY = function(v) {
-      return this.reg(Value.REG_Y, v);
-    };
-
-    Dcpu16.prototype.regZ = function(v) {
-      return this.reg(Value.REG_Z, v);
-    };
-
-    Dcpu16.prototype.regI = function(v) {
-      return this.reg(Value.REG_I, v);
-    };
-
-    Dcpu16.prototype.regJ = function(v) {
-      return this.reg(Value.REG_J, v);
-    };
-
-    Dcpu16.prototype.regSP = function(v) {
-      return this.reg(Value.REG_SP, v);
-    };
-
-    Dcpu16.prototype.regO = function(v) {
-      return this.reg(Value.REG_O, v);
-    };
-
-    Dcpu16.prototype.regPC = function(v) {
-      return this.mIStream.index(v);
-    };
-
-    Dcpu16.prototype.loadBinary = function(bin, base) {
-      var i, x, _len, _results;
-      if (base == null) base = 0;
-      _results = [];
-      for (i = 0, _len = bin.length; i < _len; i++) {
-        x = bin[i];
-        _results.push(this.mMemory[base + i] = x);
-      }
-      return _results;
-    };
-
-    Dcpu16.prototype.step = function() {
-      var i;
-      i = new Instr(this.mIStream);
-      if (this.mSkipNext) {
-        this.mSkipNext = false;
-        if (this.mCondFail != null) this.mCondFail(i);
-        return this.step();
-      }
-      if (this.mPreExec != null) this.mPreExec(i);
-      this.exec(i.opc(), i.valA(), i.valB());
-      if (this.mPostExec != null) return this.mPostExec(i);
-    };
-
-    Dcpu16.prototype.run = function() {
-      var _results;
-      this.mRun = true;
-      _results = [];
-      while (this.mRun) {
-        _results.push(this.step());
-      }
-      return _results;
-    };
-
-    Dcpu16.prototype.stop = function() {
-      return this.mRun = false;
-    };
-
-    Dcpu16.prototype.execAdv = function(opc, valA) {
-      switch (opc) {
-        case Instr.ADV_JSR:
-          this.push(this.mRegs[Value.REG_PC]);
-          return this.mRegs[Value.REG_PC] = valA.get();
-      }
-    };
-
-    Dcpu16.prototype.exec = function(opc, valA, valB) {
-      var v;
-      switch (opc) {
-        case Instr.OPC_ADV:
-          return this.execAdv(valA.raw(), valB);
-        case Instr.OPC_SET:
-          return valA.set(this, valB.get(this));
-        case Instr.OPC_ADD:
-          this.mCycles += 1;
-          v = valA.get(this) + valB.get(this);
-          if (v > 0xffff) {
-            this.regO(1);
-            v -= 0xffff;
-          } else {
-            this.regO(0);
-          }
-          return valA.set(this, v);
-        case Instr.OPC_SUB:
-          this.mCycles += 1;
-          v = valA.get(this) - valB.get(this);
-          if (v < 0) {
-            this.regO(0xffff);
-            v += 0xffff;
-          } else {
-            this.regO(0);
-          }
-          return valA.set(this, v);
-        case Instr.OPC_MUL:
-          this.mCycles += 1;
-          v = valA.get(this) * valB.get(this);
-          valA.set(this, v & 0xffff);
-          return this.regO((v >> 16) & 0xffff);
-        case Instr.OPC_DIV:
-          this.mCycles += 2;
-          if (valB.get(this) === 0) {
-            return regA.set(0);
-          } else {
-            v = valA.get(this) / valB.get(this);
-            valA.set(this, v & 0xffff);
-            return this.regO(((valA.get() << 16) / valB.get) & 0xffff);
-          }
-          break;
-        case Instr.OPC_MOD:
-          this.mCycles += 2;
-          if (valB.get(this) === 0) {
-            return regA.set(0);
-          } else {
-            return valA.set(valA.get(this) % valB.get(this));
-          }
-          break;
-        case Instr.OPC_SHL:
-          this.mCycles += 1;
-          valA.set(this, valA.get(this) << valB.get(this));
-          return this.regO(((valA.get(this) << valB.get(this)) >> 16) & 0xffff);
-        case Instr.OPC_SHR:
-          this.mCycles += 1;
-          valA.set(this, valA.get(this) >> valB.get(this));
-          return this.regO(((valA.get(this) << 16) >> valB.get(this)) & 0xffff);
-        case Instr.OPC_AND:
-          return valA.set(this, valA.get(this) & valB.get(this));
-        case Instr.OPC_BOR:
-          return valA.set(this, valA.get(this) | valB.get(this));
-        case Instr.OPC_XOR:
-          return valA.set(this, valA.get(this) ^ valB.get(this));
-        case Instr.OPC_IFE:
-          if (valA.get(this) === valB.get(this)) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
-          break;
-        case Instr.OPC_IFN:
-          if (valA.get(this) !== valB.get(this)) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
-          break;
-        case Instr.OPC_IFG:
-          if (valA.get(this) > valB.get(this)) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
-          break;
-        case Instr.OPC_IFB:
-          if ((valA.get(this) & valB.get(this)) !== 0) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
-      }
-    };
-
-    return Dcpu16;
-
-  })();
-
-  exports.Dcpu16 = Dcpu16;
-
-}).call(this);
-
-});
-
 require.define("/dcpu-disasm.coffee", function (require, module, exports, __dirname, __filename) {
 (function() {
   var Disasm, Instr, Module, decode;
@@ -10159,7 +9862,7 @@ require.define("/dcpu-disasm.coffee", function (require, module, exports, __dirn
 
 require.define("/webapp.coffee", function (require, module, exports, __dirname, __filename) {
     (function() {
-  var $, cpu, dasm, dcpu, decode, dumpMemory, onExec, prog, regs, updateDisasm, updateRegs;
+  var $, asm, assemble, cpu, dasm, dcpu, decode, dumpMemory, onExec, regs, updateDisasm, updateRegs;
 
   $ = require('jquery-browserify');
 
@@ -10169,11 +9872,9 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
 
   decode = require('../dcpu-decode');
 
+  asm = require('../dcpu-asm');
+
   cpu = new dcpu.Dcpu16();
-
-  prog = [0x7c01, 0x0030, 0x7de1, 0x1000, 0x0020, 0x7803, 0x1000, 0xc00d, 0x7dc1, 0x001a, 0xa861, 0x7c01, 0x2000, 0x2161, 0x2000, 0x8463, 0x806d, 0x7dc1, 0x000d, 0x9031, 0x7c10, 0x0018, 0x7dc1, 0x001a, 0x9037, 0x61c1, 0x7dc1, 0x001a, 0x0000, 0x0000, 0x0000, 0x0000];
-
-  cpu.loadBinary(prog);
 
   onExec = function(i) {
     var disasm, id;
@@ -10192,7 +9893,7 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
     _results = [];
     for (i = 0, _len = regs.length; i < _len; i++) {
       v = regs[i];
-      _results.push(v.html('0x' + dasm.Disasm.fmtHex(cpu.reg(i))));
+      _results.push(v.html('0x' + dasm.Disasm.fmtHex(cpu.readReg(i))));
     }
     return _results;
   };
@@ -10223,7 +9924,6 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
         v = cpu.readMem(base + (r * 8) + c);
         html = "<td>" + (dasm.Disasm.fmtHex(v)) + "</td>";
         col = $(html);
-        console.log("HTML: " + html);
         row.append(col);
       }
       _results.push(body.append(row));
@@ -10231,17 +9931,39 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
     return _results;
   };
 
+  assemble = function(text) {
+    var prog;
+    prog = new asm.Assembler().assemble(text);
+    cpu.loadBinary(prog);
+    cpu.regPC(0);
+    return updateRegs();
+  };
+
   $(function() {
+    var btnAssembleClick;
     regs = [$("#RegA"), $("#RegB"), $("#RegC"), $("#RegX"), $("#RegY"), $("#RegZ"), $("#RegI"), $("#RegJ"), $("#RegPC"), $("#RegSP"), $("#RegO")];
+    btnAssembleClick = function() {
+      var base, text;
+      text = $("#txtSource").val();
+      assemble(text);
+      base = $("#membase").val();
+      if (!base) base = 0;
+      return dumpMemory(parseInt(base));
+    };
     updateRegs();
     updateDisasm();
     dumpMemory(0);
-    $("#btnStep").click((function() {
+    btnAssembleClick();
+    $("#btnStep").click(function() {
       cpu.step();
       return updateRegs();
-    }));
+    });
+    $("#btnAssemble").click(btnAssembleClick);
     return $("#membase").change(function() {
-      return dumpMemory(parseInt($("#membase").val()));
+      var base;
+      base = $("#membase").val();
+      if (!base) base = 0;
+      return dumpMemory(parseInt(base));
     });
   });
 

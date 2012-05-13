@@ -81,9 +81,8 @@
     var btnAssembleClick;
     regs = [$("#RegA"), $("#RegB"), $("#RegC"), $("#RegX"), $("#RegY"), $("#RegZ"), $("#RegI"), $("#RegJ"), $("#RegPC"), $("#RegSP"), $("#RegO")];
     btnAssembleClick = function() {
-      var base, text;
-      text = $("#txtSource").val();
-      assemble(text);
+      var base;
+      assemble(window.editor.getValue());
       base = $("#membase").val();
       if (!base) {
         base = 0;

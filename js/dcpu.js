@@ -141,16 +141,15 @@
     };
 
     Dcpu16.prototype.loadBinary = function(bin, base) {
-      var i, x, _i, _len, _results;
+      var i, x, _i, _len;
       if (base == null) {
         base = 0;
       }
-      _results = [];
       for (i = _i = 0, _len = bin.length; _i < _len; i = ++_i) {
         x = bin[i];
-        _results.push(this.mMemory[base + i] = x);
+        this.mMemory[base + i] = x;
       }
-      return _results;
+      return this.regPC(base);
     };
 
     Dcpu16.prototype.step = function() {

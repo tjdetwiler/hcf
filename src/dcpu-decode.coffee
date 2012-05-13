@@ -17,6 +17,8 @@ class IStream
 
   nextWord: () -> @mStream[@mIndex++]
   index: (v) -> if v? then @mIndex=v else @mIndex
+  setPC: (v) -> index v
+  getPC: ( ) -> index ()
 
 class Value
   #
@@ -94,6 +96,7 @@ class Value
     else if @mEncoding is Value.VAL_POP
       console.log "ERROR: Trying to 'set' POP"
     else if @mEncoding is Value.VAL_PUSH
+      console.log "Pushing #{val}"
       cpu.push val
     else if @mEncoding is Value.VAL_PEEK
       console.log "ERROR: Trying to 'set' PEEK"

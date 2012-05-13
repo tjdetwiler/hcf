@@ -124,6 +124,7 @@
       } else if (this.mEncoding === Value.VAL_POP) {
         return console.log("ERROR: Trying to 'set' POP");
       } else if (this.mEncoding === Value.VAL_PUSH) {
+        console.log("Pushing " + val);
         return cpu.push(val);
       } else if (this.mEncoding === Value.VAL_PEEK) {
         return console.log("ERROR: Trying to 'set' PEEK");

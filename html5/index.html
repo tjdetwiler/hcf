@@ -3,7 +3,12 @@
 <head>
   <link href="css/bootstrap.css" rel="stylesheet">
   <link href='http://fonts.googleapis.com/css?family=PT+Mono' rel='stylesheet' type='text/css'/>
-  <script type="text/javascript" src="../js/web/application.js"></script>
+  <link href='codemirror2/lib/codemirror.css' rel='stylesheet'>
+  <link href='codemirror2/doc/docs.css' rel='stylesheet'>
+  <script src="../js/web/application.js"></script>
+  <script src="codemirror2/lib/codemirror.js"></script>
+  <script src="codemirror2/mode/clike/clike.js"></script>
+  <script src="codemirror2/keymap/vim.js"></script>
   <style>
     .mono{
       font-family: 'PT Mono', sans-serif;
@@ -109,7 +114,7 @@
     <button id='btnAssemble' class='btn'>Assemble</button>
     </div>
     <div class="span5">
-<textarea id="txtSource" class="mono" rows="25" cols="80">
+<form><textarea id="code" class="code">
     SET A,0x30
     SET [0x1000],0x20
     SUB A,[0x1000]
@@ -130,8 +135,20 @@
     SET PC,POP
 :crash
     SET PC,crash
-</textarea>
+</textarea></form>
     </div>
 </div>
+
+<script>
+  CodeMirror.commands.save = function() { alert("Saving"); };
+
+  window.editor = CodeMirror.fromTextArea(document.getElementById("code"), {
+    lineNumbers: true,
+    mode: "text/x-csrc",
+    keyMap: "vim",
+  });
+
+
+</script>
 </body>
 </html>

@@ -5,13 +5,6 @@ dasm = require '../dcpu-disasm'
 decode = require '../dcpu-decode'
 asm = require '../dcpu-asm'
 cpu = new dcpu.Dcpu16()
-#prog = [
-#    0x7c01, 0x0030, 0x7de1, 0x1000, 0x0020, 0x7803, 0x1000, 0xc00d,
-#    0x7dc1, 0x001a, 0xa861, 0x7c01, 0x2000, 0x2161, 0x2000, 0x8463,
-#    0x806d, 0x7dc1, 0x000d, 0x9031, 0x7c10, 0x0018, 0x7dc1, 0x001a,
-#    0x9037, 0x61c1, 0x7dc1, 0x001a, 0x0000, 0x0000, 0x0000, 0x0000
-#]
-#cpu.loadBinary prog
 
 onExec = (i) ->
   disasm = dasm.Disasm.ppInstr i
@@ -74,8 +67,7 @@ $ () ->
     ($ "#RegO")]
 
   btnAssembleClick = () ->
-    text = $("#txtSource").val()
-    assemble text
+    assemble window.editor.getValue()
     base = $("#membase").val()
     base = 0 if not base
     dumpMemory parseInt base
@@ -93,5 +85,4 @@ $ () ->
     base = $("#membase").val()
     base = 0 if not base
     dumpMemory parseInt base
-
 
