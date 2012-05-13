@@ -48,8 +48,8 @@ dumpMemory = (base) ->
 
 assemble = (text) ->
   state = new asm.Assembler().assemble(text)
-  console.log state
   if state.result isnt "success"
+    console.log state
     return $("#asm-error").html("Error: Line #{state.line}: #{state.message}")
   $("#asm-error").html("")
   cpu.loadBinary state.code

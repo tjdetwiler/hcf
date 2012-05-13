@@ -257,50 +257,58 @@
     };
 
     Assembler.prototype.processValue = function(val) {
-      var arr_regex, ilit_regex, ireg_regex, lit_regex, match, n, r, reg_regex, regid;
+      var arr_regex, ilit_regex, ireg_regex, lit_regex, match, n, r, reg_regex, regid, success;
       val = val.trim();
       reg_regex = /^([a-zA-Z]+)$/;
       ireg_regex = /^\[\s*([a-zA-Z]+|\d+)\s*\]$/;
       lit_regex = /^(0[xX][0-9a-fA-F]+|\d+)$/;
       ilit_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]$/;
       arr_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\+\s*([A-Z]+)\s*\]$/;
+      success = function(val) {
+        return {
+          result: "success",
+          value: val
+        };
+      };
       if (match = val.match(reg_regex)) {
         switch (match[1]) {
           case "POP":
-            return new SpecialValue(this, 0x18);
+            return success(new SpecialValue(this, 0x18));
           case "PEEK":
-            return new SpecialValue(this, 0x19);
+            return success(new SpecialValue(this, 0x19));
           case "PUSH":
-            return new SpecialValue(this, 0x1a);
+            return success(new SpecialValue(this, 0x1a));
           case "SP":
-            return new SpecialValue(this, 0x1b);
+            return success(new SpecialValue(this, 0x1b));
           case "PC":
-            return new SpecialValue(this, 0x1c);
+            return success(new SpecialValue(this, 0x1c));
           case "O":
-            return new SpecialValue(this, 0x1d);
+            return success(new SpecialValue(this, 0x1d));
           default:
             regid = dasm.Disasm.REG_DISASM.indexOf(match[1]);
             if (regid === -1) {
-              return new LabelValue(this, match[1]);
+              return success(new LabelValue(this, match[1]));
             } else {
-              return new RegValue(this, regid);
+              return success(new RegValue(this, regid));
             }
         }
       } else if (match = val.match(ireg_regex)) {
         regid = dasm.Disasm.REG_DISASM.indexOf(match[1]);
-        return new MemValue(this, regid, void 0);
+        return success(new MemValue(this, regid, void 0));
       } else if (match = val.match(lit_regex)) {
-        return new LitValue(this, parseInt(match[1]));
+        return success(new LitValue(this, parseInt(match[1])));
       } else if (match = val.match(ilit_regex)) {
         n = parseInt(match[1]);
-        return new MemValue(this, void 0, n);
+        return success(new MemValue(this, void 0, n));
       } else if (match = val.match(arr_regex)) {
         n = parseInt(match[1]);
         r = dasm.Disasm.REG_DISASM.indexOf(match[2]);
-        return new MemValue(this, r, n);
+        return success(new MemValue(this, r, n));
       } else {
-        console.log("Unmatched value " + val);
-        return process.exit(1);
+        return r = {
+          result: "fail",
+          message: "Unmatched value " + val
+        };
       }
     };
 
@@ -333,8 +341,14 @@
         enc = dasm.Disasm.OPC_DISASM.indexOf(opc);
         this.incPc();
         valA = this.processValue(valA);
+        if (valA.result !== "success") {
+          return valA;
+        }
         valB = this.processValue(valB);
-        this.mInstrs.push(new Instruction(this, enc, [valA, valB]));
+        if (valB.result !== "success") {
+          return valB;
+        }
+        this.mInstrs.push(new Instruction(this, enc, [valA.value, valB.value]));
         return r = {
           result: "success"
         };
@@ -349,8 +363,11 @@
         enc = dasm.Disasm.ADV_OPC_DISASM.indexOf(opc);
         this.incPc();
         valB = this.processValue(valA);
+        if (valB.result !== "success") {
+          return valB;
+        }
         valA = new RawValue(this, enc);
-        this.mInstrs.push(new Instruction(this, 0, [valA, valB]));
+        this.mInstrs.push(new Instruction(this, 0, [valA, valB.value]));
         return r = {
           result: "success"
         };
@@ -382,7 +399,6 @@
       for (_i = 0, _len = lines.length; _i < _len; _i++) {
         l = lines[_i];
         state = this.processLine(l);
-        console.log(state);
         if (state.result !== "success") {
           state.line = index;
           return state;

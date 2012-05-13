@@ -120,38 +120,43 @@ class Assembler
     ilit_regex = ///^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]$///
     arr_regex = ///^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\+\s*([A-Z]+)\s*\]$///
 
+    success = (val) ->
+      result: "success"
+      value: val
+
     if match = val.match reg_regex
       #
       # See if its a basic or special register. if not, assume label
       #
       switch match[1]
-        when "POP"    then new SpecialValue @, 0x18
-        when "PEEK"   then new SpecialValue @, 0x19
-        when "PUSH"   then new SpecialValue @, 0x1a
-        when "SP"     then new SpecialValue @, 0x1b
-        when "PC"     then new SpecialValue @, 0x1c
-        when "O"      then new SpecialValue @, 0x1d
+        when "POP"    then success new SpecialValue @, 0x18
+        when "PEEK"   then success new SpecialValue @, 0x19
+        when "PUSH"   then success new SpecialValue @, 0x1a
+        when "SP"     then success new SpecialValue @, 0x1b
+        when "PC"     then success new SpecialValue @, 0x1c
+        when "O"      then success new SpecialValue @, 0x1d
         else
           regid = dasm.Disasm.REG_DISASM.indexOf match[1]
           if regid == -1
-            new LabelValue @, match[1]
+            return success new LabelValue @, match[1]
           else
-            new RegValue @, regid
+            return success new RegValue @, regid
     else if match = val.match ireg_regex
       regid = dasm.Disasm.REG_DISASM.indexOf match[1]
-      new MemValue @, regid, undefined
+      return success (new MemValue @, regid, undefined)
     else if match = val.match lit_regex
-      new LitValue @, parseInt match[1]
+      return success new LitValue @, parseInt match[1]
     else if match = val.match ilit_regex
       n = parseInt match[1]
-      new MemValue @, undefined, n
+      return success (new MemValue @, undefined, n)
     else if match = val.match arr_regex
       n = parseInt match[1]
       r = dasm.Disasm.REG_DISASM.indexOf match[2]
-      new MemValue @, r, n
+      return success new MemValue @, r, n
     else
-      console.log "Unmatched value #{val}"
-      process.exit(1)
+      return r =
+        result: "fail"
+        message: "Unmatched value #{val}"
 
   processLine: (line) ->
     line = line.trim().toUpperCase()
@@ -198,8 +203,10 @@ class Assembler
       enc = dasm.Disasm.OPC_DISASM.indexOf opc
       @incPc()
       valA = @processValue valA
+      if valA.result isnt "success" then return valA
       valB = @processValue valB
-      @mInstrs.push new Instruction @,enc, [valA, valB]
+      if valB.result isnt "success" then return valB
+      @mInstrs.push new Instruction @,enc, [valA.value, valB.value]
       return r = 
         result: "success"
     else if match = line.match adv_regex
@@ -211,8 +218,9 @@ class Assembler
       enc = dasm.Disasm.ADV_OPC_DISASM.indexOf opc
       @incPc()
       valB = @processValue valA
+      if valB.result isnt "success" then return valB
       valA = new RawValue @, enc
-      @mInstrs.push new Instruction @, 0, [valA,valB]
+      @mInstrs.push new Instruction @, 0, [valA,valB.value]
       return r =
         result: "success"
     else
@@ -229,7 +237,6 @@ class Assembler
     index = 1
     for l in lines
       state = @processLine l
-      console.log state
       if state.result isnt "success"
         state.line = index
         return state
