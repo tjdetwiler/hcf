@@ -16,58 +16,81 @@ Instr = decode.Instr
 IStream = decode.IStream
 
 class Dcpu16
-
-  constructor: (program = []) ->
+  constructor: () ->
+    cpu = @
     @mCycles = 0
-    @mRegs = []
     @mSkipNext = false
-    @mRegs[x]   = 0 for x in [0..0xf]
-    @mRegs[Value.REG_SP] = 0xffff
     @mMemory = (0 for x in [0..0xffff])
-    @mMemory[i] = x for x,i in program
     @mIStream = new IStream @mMemory
+    @mRegStorage = (0 for x in [0..0xf])
+    @mRegStorage[Value.REG_SP] = 0xffff
+    @mRegAccess = [
+      @_regGen(Value.REG_A), @_regGen(Value.REG_B), @_regGen(Value.REG_C),
+      @_regGen(Value.REG_X), @_regGen(Value.REG_Y), @_regGen(Value.REG_Z),
+      @_regGen(Value.REG_I), @_regGen(Value.REG_J),
+      (v) -> cpu.mIStream.index(v), 
+      @_regGen(Value.REG_SP), @_regGen(Value.REG_O)
+    ]
  
   #
-  # Events
+  # Event setter functions.
+  #
+  # onPreExec:  fn(instr), where instr is the Instruction about to be executed.
+  # onPostExec: fn(instr), where instr is the Instruction just executed.
+  # onCondFail: fn(instr), where instr is the skipped Instruction.
   #
   onPreExec: (fn) -> @mPreExec = fn
   onPostExec: (fn) -> @mPostExec = fn
   onCondFail: (fn) -> @mCondFail = fn
 
   #
-  # Data Accessors
+  # Register Accessors
   #
-  readReg:  (n) ->
-    if n == Value.REG_PC
-      @regPC()
-    else
-      @mRegs[n]
-  writeReg: (n,val) ->
-    if n == Value.REG_PC
-      @regPC val
-    else
-      @mRegs[n] = val
+  # Each register has a function 'reg{ID}', where 'ID' is the register name.
+  # The functions take one argument which determines the behavior. If the
+  # argument is defined, then the register is assigned to the value passed.
+  # If the argument is undefined, then the function returns the register value.
+  #
+  reg:      (n,v)     -> @mRegAccess[n](v)
+  regA:     (v)     -> @reg Value.REG_A, v
+  regB:     (v)     -> @reg Value.REG_B, v
+  regC:     (v)     -> @reg Value.REG_C, v
+  regX:     (v)     -> @reg Value.REG_X, v
+  regY:     (v)     -> @reg Value.REG_Y, v
+  regZ:     (v)     -> @reg Value.REG_Z, v
+  regI:     (v)     -> @reg Value.REG_I, v
+  regJ:     (v)     -> @reg Value.REG_J, v
+  regSP:    (v)     -> @reg Value.REG_SP, v
+  regO:     (v)     -> @reg Value.REG_O, v
+  regPC:    (v)     -> @reg Value.REG_PC, v
+  readReg:  (n)     -> @reg n
+  writeReg: (n,val) -> @reg n, val
+
+  #
+  # Memory Accessors
+  #
+  # Reads or writes a word or RAM
+  #
   readMem:  (addr) -> @mMemory[addr]
   writeMem: (addr, val) -> @mMemory[addr] = val
-  push:     (v) ->
-    @mMemory[@mRegs[Value.REG_SP]] = v
-    @mRegs[Value.REG_SP]-=1
 
-  peek:     () -> @mMemory[@mRegs[Value.REG_SP]]
-  pop:      () -> @mMemory[++@mRegs[Value.REG_SP]]
+  #
+  # Stack Helpers
+  #
+  # push: Returns [--SP]
+  # peek: Returns [SP]
+  # pop:  Returns [SP++]
+  #
+  push: (v) ->
+    sp = @regSP(@regSP()-1)
+    @mMemory[sp] = v
+  peek: ( ) ->
+    sp = @regSP()
+    @mMemory[sp]
+  pop:  ( ) ->
+    sp = @regSP(@regSP()+1)
+    @mMemory[sp - 1]
 
-  reg:      (n,v=0) -> if v then @mRegs[n]=v else @mRegs[n]
-  regA:     (v) -> @reg  Value.REG_A, v
-  regB:     (v) -> @reg  Value.REG_B, v
-  regC:     (v) -> @reg  Value.REG_C, v
-  regX:     (v) -> @reg  Value.REG_X, v
-  regY:     (v) -> @reg  Value.REG_Y, v
-  regZ:     (v) -> @reg  Value.REG_Z, v
-  regI:     (v) -> @reg  Value.REG_I, v
-  regJ:     (v) -> @reg  Value.REG_J, v
-  regSP:    (v) -> @reg  Value.REG_SP,v
-  regO:     (v) -> @reg  Value.REG_O, v
-  regPC:    (v) -> @mIStream.index v
 
   #
   # Loads a ramdisk. Binary should be a JS array of 2B words.
@@ -76,7 +99,11 @@ class Dcpu16
     @mMemory[base+i] = x for x,i in bin
 
   #
-  # Execute a Single Instruction
+  # Execution Control
+  #
+  # step: Execute one instruction
+  # run:  Run the CPU at full speed.
+  # stop: Stops the CPU.
   #
   step: () ->
     i = new Instr @mIStream
@@ -89,26 +116,23 @@ class Dcpu16
     @exec i.opc(), i.valA(), i.valB()
     if @mPostExec? then @mPostExec i
 
-  #
-  # Run the CPU
-  #
   run: () ->
     @mRun = true
     @step() while @mRun
 
-  #
-  # Stop the CPU
-  #
   stop: () -> @mRun = false
 
   #
-  # Executes an advanced instruction
+  # Execution Logic
+  #
+  # exec: Interprets an instruction and updates CPU state.
+  # execAdv: Helper for exec to execute an Advanced Instruction
   #
   execAdv: (opc, valA) ->
     switch opc
       when Instr.ADV_JSR
-        @push(@mRegs[Value.REG_PC])
-        @mRegs[Value.REG_PC] = valA.get()
+        @push @regPC()
+        @regPC valA.get()
 
   exec: (opc, valA, valB) ->
     #
@@ -198,5 +222,15 @@ class Dcpu16
           @mSkipNext=true
           @mCycles += 1
 
+  #
+  # Generates a register access function
+  #
+  _regGen: (n) ->
+    cpu = this
+    (v) -> 
+      if v?
+        cpu.mRegStorage[n]=v
+      else
+        cpu.mRegStorage[n]
 
 exports.Dcpu16 = Dcpu16
