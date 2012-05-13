@@ -243,15 +243,6 @@
       return lookup(name) != null;
     };
 
-    Assembler.prototype.isNumber = function(tok) {
-      return tok.match(/0[xX][0-9a-zA-Z]+/ || tok.match(/[0-9]+/));
-    };
-
-    Assembler.prototype.isReg = function(tok) {
-      var _ref;
-      return _ref = tok.trim(), __indexOf.call(dasm.Disasm.REG_DISASM, _ref) >= 0;
-    };
-
     Assembler.prototype.incPc = function() {
       return ++this.mPc;
     };
@@ -323,7 +314,8 @@
       basic_regex = /(\w+)\s+([^,]+)\s*,\s*([^,]+)/;
       adv_regex = /(\w+)\s+([^,]+)/;
       if (line[0] === ":") {
-        toks = line.split(" ");
+        console.log("Found label");
+        toks = line.match(/[^ \t]+/g);
         this.label(toks[0].slice(1), this.mPc);
         return this.processLine(toks.slice(1).join(" "));
       } else if (line[0] === ";") {

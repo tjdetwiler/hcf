@@ -106,10 +106,6 @@ class Assembler
   lookup: (name) -> @mLabels[name]
   defined: (name) -> lookup(name)?
 
-  isNumber: (tok) ->
-    tok.match ///0[xX][0-9a-zA-Z]+/// or tok.match ///[0-9]+///
-  isReg: (tok) -> tok.trim() in dasm.Disasm.REG_DISASM
-
   incPc: () -> ++@mPc
 
   processValue: (val) ->
@@ -183,8 +179,9 @@ class Assembler
     #   > Directive?
     #
     if line[0] is ":"
+      console.log "Found label"
       # Label
-      toks = line.split " "
+      toks = line.match /[^ \t]+/g
       @label toks[0][1..], @mPc
       # Process rest of line
       return @processLine (toks[1..].join " ")
