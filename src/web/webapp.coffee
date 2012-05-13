@@ -47,8 +47,12 @@ dumpMemory = (base) ->
     body.append row
 
 assemble = (text) ->
-  prog = new asm.Assembler().assemble(text)
-  cpu.loadBinary prog
+  state = new asm.Assembler().assemble(text)
+  console.log state
+  if state.result isnt "success"
+    return $("#asm-error").html("Error: Line #{state.line}: #{state.message}")
+  $("#asm-error").html("")
+  cpu.loadBinary state.code
   cpu.regPC 0
   updateRegs()
 

@@ -70,9 +70,14 @@
   };
 
   assemble = function(text) {
-    var prog;
-    prog = new asm.Assembler().assemble(text);
-    cpu.loadBinary(prog);
+    var state;
+    state = new asm.Assembler().assemble(text);
+    console.log(state);
+    if (state.result !== "success") {
+      return $("#asm-error").html("Error: Line " + state.line + ": " + state.message);
+    }
+    $("#asm-error").html("");
+    cpu.loadBinary(state.code);
     cpu.regPC(0);
     return updateRegs();
   };

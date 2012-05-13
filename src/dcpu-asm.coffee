@@ -9,9 +9,6 @@ Module = {}
 
 dasm = require './dcpu-disasm'
 
-class ParseState
-  constructor: () -> ""
-
 class RegValue
   constructor: (asm, reg) ->
     @mAsm = asm
@@ -53,6 +50,7 @@ class LitValue
 class SpecialValue
   constructor: (asm,enc) ->
     @mEnc = enc
+  emit: () -> undefined
   encode: () -> @mEnc
 
 class LabelValue
@@ -80,6 +78,7 @@ class RawValue
   constructor: (asm, raw) ->
     @mAsm = asm
     @mRaw = raw
+  emit: () -> undefined
   encode: () -> @mRaw
 
 class Instruction
@@ -156,7 +155,9 @@ class Assembler
 
   processLine: (line) ->
     line = line.trim().toUpperCase()
-    if line is "" then return
+    if line is ""
+      return r =
+        result: "success"
 
     basic_regex = ///
       (\w+)\s+        #Opcode
@@ -180,42 +181,62 @@ class Assembler
       # Label
       toks = line.split " "
       @label toks[0][1..], @mPc
-      
       # Process rest of line
-      @processLine (toks[1..].join " ")
+      return @processLine (toks[1..].join " ")
     else if line[0] is ";"
       # Comment
-      return
+      return r = 
+        result: "success"
     else if match = line.match basic_regex
       # Basic Opcode
       [opc, valA, valB] = match[1..3]
       if opc not in dasm.Disasm.OPC_DISASM
-        console.log "ERROR: Unknown OpCode: #{opc}"
-        return false
+        return r =
+          result: "fail"
+          message: "Unknown Opcode: #{opc}"
+
       enc = dasm.Disasm.OPC_DISASM.indexOf opc
       @incPc()
       valA = @processValue valA
       valB = @processValue valB
       @mInstrs.push new Instruction @,enc, [valA, valB]
+      return r = 
+        result: "success"
     else if match = line.match adv_regex
       [opc, valA] = match[1..2]
       if opc not in dasm.Disasm.ADV_OPC_DISASM
-        console.log "ERROR: Unknown OpCode: #{opc}"
+        return r =
+          result: "fail"
+          message: "Unknown Opcode: #{opc}"
       enc = dasm.Disasm.ADV_OPC_DISASM.indexOf opc
       @incPc()
       valB = @processValue valA
       valA = new RawValue @, enc
       @mInstrs.push new Instruction @, 0, [valA,valB]
+      return r =
+        result: "success"
     else
-      console.log "Syntax Error"
-      console.log line
+      return r =
+        result: "fail"
+        source: line
+        message: "Syntax Error"
 
   emit: (stream) -> i.emit stream for i in @mInstrs
+
   assemble: (text) ->
-    lines = text.split "\n"
-    @processLine l for l in lines
     prog = []
+    lines = text.split "\n"
+    index = 1
+    for l in lines
+      state = @processLine l
+      console.log state
+      if state.result isnt "success"
+        state.line = index
+        return state
+      index++
     @emit prog
-    prog
+    return r =
+      result: "success"
+      code: prog
 
 exports.Assembler = Assembler
