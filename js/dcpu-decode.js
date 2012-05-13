@@ -29,6 +29,14 @@
       }
     };
 
+    IStream.prototype.setPC = function(v) {
+      return index(v);
+    };
+
+    IStream.prototype.getPC = function() {
+      return index();
+    };
+
     return IStream;
 
   })();
@@ -67,6 +75,8 @@
         this.mValue = enc;
       } else if ((0x08 <= enc && enc <= 0x0f)) {
         this.isMem = true;
+        this.isReg = true;
+        this.mValue = enc - 0x08;
       } else if ((0x10 <= enc && enc <= 0x17)) {
         this.isMem = true;
         this.mNext = this.mIStream.nextWord();
@@ -101,7 +111,11 @@
     }
 
     Value.prototype.get = function(cpu) {
-      if (this.isMem) {
+      var addr;
+      if (this.isMem && this.isReg) {
+        addr = cpu.readReg(this.mValue);
+        return cpu.readMem(addr);
+      } else if (this.isMem) {
         return cpu.readMem(this.mValue);
       } else if (this.isReg) {
         return cpu.readReg(this.mValue);
@@ -117,7 +131,12 @@
     };
 
     Value.prototype.set = function(cpu, val) {
-      if (this.isMem) {
+      var addr;
+      if (this.isMem && this.isReg) {
+        addr = cpu.readReg(this.mValue);
+        return cpu.writeMem(addr, val);
+      } else if (this.isMem) {
+        console.log("Writing " + val + " to " + this.mValue);
         return cpu.writeMem(this.mValue, val);
       } else if (this.isReg) {
         return cpu.writeReg(this.mValue, val);

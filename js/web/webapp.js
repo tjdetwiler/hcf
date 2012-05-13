@@ -19,7 +19,8 @@
     disasm = dasm.Disasm.ppInstr(i);
     $(".instruction").removeClass("current-instruction");
     id = "#pc" + (i.addr());
-    return $(id).addClass("current-instruction");
+    $(id).addClass("current-instruction");
+    return window.editor.setLineClass(1, "myclass", "myclass");
   };
 
   cpu.onPostExec(onExec);

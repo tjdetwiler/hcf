@@ -114,7 +114,7 @@ class Assembler
 
   processValue: (val) ->
     val = val.trim()
-    reg_regex = ///^([a-zA-Z]+)$///
+    reg_regex = ///^([a-zA-Z_]+)$///
     ireg_regex = ///^\[\s*([a-zA-Z]+|\d+)\s*\]$///
     lit_regex = ///^(0[xX][0-9a-fA-F]+|\d+)$///
     ilit_regex = ///^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]$///

@@ -18,7 +18,7 @@ class IStream
   nextWord: () -> @mStream[@mIndex++]
   index: (v) -> if v? then @mIndex=v else @mIndex
   setPC: (v) -> index v
-  getPC: ( ) -> index ()
+  getPC: ( ) -> index()
 
 class Value
   #
@@ -46,6 +46,8 @@ class Value
       @mValue = enc
     else if 0x08 <= enc <= 0x0f
       @isMem = true
+      @isReg = true
+      @mValue = enc - 0x08
     else if 0x10 <= enc <= 0x17
       @isMem = true
       @mNext = @mIStream.nextWord()
@@ -75,7 +77,10 @@ class Value
       @mValue = enc - 0x20
 
   get: (cpu) ->
-    if @isMem
+    if @isMem and @isReg
+      addr = cpu.readReg @mValue
+      cpu.readMem addr
+    else if @isMem
       cpu.readMem @mValue
     else if @isReg
       cpu.readReg @mValue
@@ -89,7 +94,11 @@ class Value
       @mValue
     
   set: (cpu,val) ->
-    if @isMem
+    if @isMem and @isReg
+      addr = cpu.readReg @mValue
+      cpu.writeMem addr, val
+    else if @isMem
+      console.log "Writing #{val} to #{@mValue}"
       cpu.writeMem @mValue, val
     else if @isReg
       cpu.writeReg @mValue, val

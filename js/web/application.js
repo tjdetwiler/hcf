@@ -10107,6 +10107,14 @@ require.define("/dcpu-decode.js", function (require, module, exports, __dirname,
       }
     };
 
+    IStream.prototype.setPC = function(v) {
+      return index(v);
+    };
+
+    IStream.prototype.getPC = function() {
+      return index();
+    };
+
     return IStream;
 
   })();
@@ -10145,6 +10153,8 @@ require.define("/dcpu-decode.js", function (require, module, exports, __dirname,
         this.mValue = enc;
       } else if ((0x08 <= enc && enc <= 0x0f)) {
         this.isMem = true;
+        this.isReg = true;
+        this.mValue = enc - 0x08;
       } else if ((0x10 <= enc && enc <= 0x17)) {
         this.isMem = true;
         this.mNext = this.mIStream.nextWord();
@@ -10179,7 +10189,11 @@ require.define("/dcpu-decode.js", function (require, module, exports, __dirname,
     }
 
     Value.prototype.get = function(cpu) {
-      if (this.isMem) {
+      var addr;
+      if (this.isMem && this.isReg) {
+        addr = cpu.readReg(this.mValue);
+        return cpu.readMem(addr);
+      } else if (this.isMem) {
         return cpu.readMem(this.mValue);
       } else if (this.isReg) {
         return cpu.readReg(this.mValue);
@@ -10195,7 +10209,12 @@ require.define("/dcpu-decode.js", function (require, module, exports, __dirname,
     };
 
     Value.prototype.set = function(cpu, val) {
-      if (this.isMem) {
+      var addr;
+      if (this.isMem && this.isReg) {
+        addr = cpu.readReg(this.mValue);
+        return cpu.writeMem(addr, val);
+      } else if (this.isMem) {
+        console.log("Writing " + val + " to " + this.mValue);
         return cpu.writeMem(this.mValue, val);
       } else if (this.isReg) {
         return cpu.writeReg(this.mValue, val);
@@ -10659,7 +10678,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     Assembler.prototype.processValue = function(val) {
       var arr_regex, ilit_regex, ireg_regex, lit_regex, match, n, r, reg_regex, regid, success;
       val = val.trim();
-      reg_regex = /^([a-zA-Z]+)$/;
+      reg_regex = /^([a-zA-Z_]+)$/;
       ireg_regex = /^\[\s*([a-zA-Z]+|\d+)\s*\]$/;
       lit_regex = /^(0[xX][0-9a-fA-F]+|\d+)$/;
       ilit_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]$/;
@@ -10844,7 +10863,8 @@ require.define("/webapp.js", function (require, module, exports, __dirname, __fi
     disasm = dasm.Disasm.ppInstr(i);
     $(".instruction").removeClass("current-instruction");
     id = "#pc" + (i.addr());
-    return $(id).addClass("current-instruction");
+    $(id).addClass("current-instruction");
+    return window.editor.setLineClass(1, "myclass", "myclass");
   };
 
   cpu.onPostExec(onExec);

@@ -51,7 +51,7 @@ class Dcpu16
   # argument is defined, then the register is assigned to the value passed.
   # If the argument is undefined, then the function returns the register value.
   #
-  reg:      (n,v)     -> @mRegAccess[n](v)
+  reg:      (n,v)   -> @mRegAccess[n](v)
   regA:     (v)     -> @reg Value.REG_A, v
   regB:     (v)     -> @reg Value.REG_B, v
   regC:     (v)     -> @reg Value.REG_C, v

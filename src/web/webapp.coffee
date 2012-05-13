@@ -11,6 +11,7 @@ onExec = (i) ->
   $(".instruction").removeClass "current-instruction"
   id = "#pc#{i.addr()}"
   $(id).addClass "current-instruction"
+  window.editor.setLineClass 1, "myclass", "myclass"
 
 cpu.onPostExec onExec
 
