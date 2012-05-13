@@ -280,10 +280,10 @@
       var arr_regex, ilit_regex, ireg_regex, lit_regex, match, n, r, reg_regex, regid;
       val = val.trim();
       reg_regex = /^([a-zA-Z]+)$/;
-      ireg_regex = /^\[([a-zA-Z]+|\d+)\]$/;
+      ireg_regex = /^\[\s*([a-zA-Z]+|\d+)\s*\]$/;
       lit_regex = /^(0[xX][0-9a-fA-F]+|\d+)$/;
-      ilit_regex = /^\[(0[xX][0-9a-fA-F]+|\d+)\]$/;
-      arr_regex = /^\[(0[xX][0-9a-fA-F]+|\d+)\+([A-Z]+)\]$/;
+      ilit_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]$/;
+      arr_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\+\s*([A-Z]+)\s*\]$/;
       if (match = val.match(reg_regex)) {
         switch (match[1]) {
           case "POP":
@@ -330,11 +330,12 @@
       if (line === "") {
         return;
       }
-      basic_regex = /(\w+)\x20([^,]+),([^,]+)/;
-      adv_regex = /(\w+)\x20([^,]+)/;
+      basic_regex = /(\w+)\s+([^,]+)\s*,\s*([^,]+)/;
+      adv_regex = /(\w+)\s+([^,]+)/;
       if (line[0] === ":") {
         toks = line.split(" ");
-        return this.label(toks[0].slice(1), this.mPc);
+        this.label(toks[0].slice(1), this.mPc);
+        return this.processLine(toks.slice(1).join(" "));
       } else if (line[0] === ";") {
 
       } else if (match = line.match(basic_regex)) {

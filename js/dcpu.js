@@ -16,31 +16,34 @@
 
     Dcpu16.name = 'Dcpu16';
 
-    function Dcpu16(program) {
-      var i, x, _i, _j, _len;
-      if (program == null) {
-        program = [];
-      }
+    function Dcpu16() {
+      var cpu, x;
+      cpu = this;
       this.mCycles = 0;
-      this.mRegs = [];
       this.mSkipNext = false;
-      for (x = _i = 0; 0 <= 0xf ? _i <= 0xf : _i >= 0xf; x = 0 <= 0xf ? ++_i : --_i) {
-        this.mRegs[x] = 0;
-      }
-      this.mRegs[Value.REG_SP] = 0xffff;
       this.mMemory = (function() {
-        var _j, _results;
+        var _i, _results;
         _results = [];
-        for (x = _j = 0; 0 <= 0xffff ? _j <= 0xffff : _j >= 0xffff; x = 0 <= 0xffff ? ++_j : --_j) {
+        for (x = _i = 0; 0 <= 0xffff ? _i <= 0xffff : _i >= 0xffff; x = 0 <= 0xffff ? ++_i : --_i) {
           _results.push(0);
         }
         return _results;
       })();
-      for (i = _j = 0, _len = program.length; _j < _len; i = ++_j) {
-        x = program[i];
-        this.mMemory[i] = x;
-      }
       this.mIStream = new IStream(this.mMemory);
+      this.mRegStorage = (function() {
+        var _i, _results;
+        _results = [];
+        for (x = _i = 0; 0 <= 0xf ? _i <= 0xf : _i >= 0xf; x = 0 <= 0xf ? ++_i : --_i) {
+          _results.push(0);
+        }
+        return _results;
+      })();
+      this.mRegStorage[Value.REG_SP] = 0xffff;
+      this.mRegAccess = [
+        this._regGen(Value.REG_A), this._regGen(Value.REG_B), this._regGen(Value.REG_C), this._regGen(Value.REG_X), this._regGen(Value.REG_Y), this._regGen(Value.REG_Z), this._regGen(Value.REG_I), this._regGen(Value.REG_J), function(v) {
+          return cpu.mIStream.index(v);
+        }, this._regGen(Value.REG_SP), this._regGen(Value.REG_O)
+      ];
     }
 
     Dcpu16.prototype.onPreExec = function(fn) {
@@ -55,52 +58,8 @@
       return this.mCondFail = fn;
     };
 
-    Dcpu16.prototype.readReg = function(n) {
-      if (n === Value.REG_PC) {
-        return this.regPC();
-      } else {
-        return this.mRegs[n];
-      }
-    };
-
-    Dcpu16.prototype.writeReg = function(n, val) {
-      if (n === Value.REG_PC) {
-        return this.regPC(val);
-      } else {
-        return this.mRegs[n] = val;
-      }
-    };
-
-    Dcpu16.prototype.readMem = function(addr) {
-      return this.mMemory[addr];
-    };
-
-    Dcpu16.prototype.writeMem = function(addr, val) {
-      return this.mMemory[addr] = val;
-    };
-
-    Dcpu16.prototype.push = function(v) {
-      this.mMemory[this.mRegs[Value.REG_SP]] = v;
-      return this.mRegs[Value.REG_SP] -= 1;
-    };
-
-    Dcpu16.prototype.peek = function() {
-      return this.mMemory[this.mRegs[Value.REG_SP]];
-    };
-
-    Dcpu16.prototype.pop = function() {
-      return this.mMemory[++this.mRegs[Value.REG_SP]];
-    };
-
     Dcpu16.prototype.reg = function(n, v) {
-      if (v == null) {
-        v = 0;
-      }
-      if (v) {
-        return this.mRegs[n] = v;
-      } else {
-        return this.mRegs[n];
-      }
+      return this.mRegAccess[n](v);
     };
 
     Dcpu16.prototype.regA = function(v) {
@@ -144,7 +103,41 @@
     };
 
     Dcpu16.prototype.regPC = function(v) {
-      return this.mIStream.index(v);
+      return this.reg(Value.REG_PC, v);
+    };
+
+    Dcpu16.prototype.readReg = function(n) {
+      return this.reg(n);
+    };
+
+    Dcpu16.prototype.writeReg = function(n, val) {
+      return this.reg(n, val);
+    };
+
+    Dcpu16.prototype.readMem = function(addr) {
+      return this.mMemory[addr];
+    };
+
+    Dcpu16.prototype.writeMem = function(addr, val) {
+      return this.mMemory[addr] = val;
+    };
+
+    Dcpu16.prototype.push = function(v) {
+      var sp;
+      sp = this.regSP(this.regSP() - 1);
+      return this.mMemory[sp] = v;
+    };
+
+    Dcpu16.prototype.peek = function() {
+      var sp;
+      sp = this.regSP();
+      return this.mMemory[sp];
+    };
+
+    Dcpu16.prototype.pop = function() {
+      var sp;
+      sp = this.regSP(this.regSP() + 1);
+      return this.mMemory[sp - 1];
     };
 
     Dcpu16.prototype.loadBinary = function(bin, base) {
@@ -196,8 +189,8 @@
     Dcpu16.prototype.execAdv = function(opc, valA) {
       switch (opc) {
         case Instr.ADV_JSR:
-          this.push(this.mRegs[Value.REG_PC]);
-          return this.mRegs[Value.REG_PC] = valA.get();
+          this.push(this.regPC());
+          return this.regPC(valA.get());
       }
     };
 
@@ -297,6 +290,18 @@
             return this.mCycles += 1;
           }
       }
+    };
+
+    Dcpu16.prototype._regGen = function(n) {
+      var cpu;
+      cpu = this;
+      return function(v) {
+        if (v != null) {
+          return cpu.mRegStorage[n] = v;
+        } else {
+          return cpu.mRegStorage[n];
+        }
+      };
     };
 
     return Dcpu16;

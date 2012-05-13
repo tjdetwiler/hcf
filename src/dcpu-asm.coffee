@@ -13,14 +13,14 @@ class Value
   emit: () -> undefined
 
 class RegValue extends Value
-  constructor: (asm, reg) -> 
+  constructor: (asm, reg) ->
     @mAsm = asm
     @mReg = reg
   emit: (stream) -> []
   encode: () -> @mReg
 
 class MemValue extends Value
-  constructor: (asm, reg=undefined, lit=undefined) -> 
+  constructor: (asm, reg=undefined, lit=undefined) ->
     @mAsm = asm
     @mReg = reg
     @mLit = lit
@@ -37,7 +37,7 @@ class MemValue extends Value
       console.log "ERROR: MemValue with corrupted state."
 
 class LitValue extends Value
-  constructor: (asm,lit) -> 
+  constructor: (asm,lit) ->
     @mAsm = asm
     @mLit = lit
     if @mLit > 0x1f then @mAsm.incPc()
@@ -107,7 +107,7 @@ class Assembler
   lookup: (name) -> @mLabels[name]
   defined: (name) -> lookup(name)?
 
-  isNumber: (tok) -> 
+  isNumber: (tok) ->
     tok.match ///0[xX][0-9a-zA-Z]+/// or tok.match ///[0-9]+///
   isReg: (tok) -> tok.trim() in dasm.Disasm.REG_DISASM
 
@@ -116,10 +116,10 @@ class Assembler
   processValue: (val) ->
     val = val.trim()
     reg_regex = ///^([a-zA-Z]+)$///
-    ireg_regex = ///^\[([a-zA-Z]+|\d+)\]$///
+    ireg_regex = ///^\[\s*([a-zA-Z]+|\d+)\s*\]$///
     lit_regex = ///^(0[xX][0-9a-fA-F]+|\d+)$///
-    ilit_regex = ///^\[(0[xX][0-9a-fA-F]+|\d+)\]$///
-    arr_regex = ///^\[(0[xX][0-9a-fA-F]+|\d+)\+([A-Z]+)\]$///
+    ilit_regex = ///^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]$///
+    arr_regex = ///^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\+\s*([A-Z]+)\s*\]$///
 
     if match = val.match reg_regex
       #
@@ -159,15 +159,15 @@ class Assembler
     if line is "" then return
 
     basic_regex = ///
-      (\w+)\x20       #Opcode
-      ( 
+      (\w+)\s+        #Opcode
+      (
         [^,]+         #ValA
-      ),(             #ValB    
+      )\s*,\s*(       #ValB
         [^,]+
     )///
     adv_regex = ///
-      (\w+)\x20       #Opcode
-      ( 
+      (\w+)\s+      #Opcode
+      (
         [^,]+         #ValA
     )///
     #
@@ -180,6 +180,9 @@ class Assembler
       # Label
       toks = line.split " "
       @label toks[0][1..], @mPc
+      
+      # Process rest of line
+      @processLine (toks[1..].join " ")
     else if line[0] is ";"
       # Comment
       return
