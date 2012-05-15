@@ -41,7 +41,7 @@ class Value
     @isMem = false
     @isReg = false
     @mEncoding = enc
-    @mNext=0
+    @mNext=undefined
 
     if raw
       @mValue = enc
@@ -59,7 +59,9 @@ class Value
       @mValue = enc - 0x08
     else if 0x10 <= enc <= 0x17
       @isMem = true
+      @isReg = true
       @mNext = @mIStream.nextWord()
+      @mValue = enc - 0x10
     else if enc == Value.VAL_POP
       ""
     else if enc == Value.VAL_PEEK
@@ -86,7 +88,11 @@ class Value
       @mValue = enc - 0x20
 
   get: (cpu) ->
-    if @isMem and @isReg
+    if @isMem and @isReg and @mNext?
+      addr = @mNext
+      addr += cpu.readReg @mValue
+      cpu.readMem addr
+    else if @isMem and @isReg
       addr = cpu.readReg @mValue
       cpu.readMem addr
     else if @isMem
@@ -105,7 +111,11 @@ class Value
       @mValue
     
   set: (cpu,val) ->
-    if @isMem and @isReg
+    if @isMem and @isReg and @mNext?
+      addr = @mNext
+      addr += cpu.readReg @mValue
+      cpu.writeMem addr, val
+    else if @isMem and @isReg
       addr = cpu.readReg @mValue
       cpu.writeMem addr, val
     else if @isMem

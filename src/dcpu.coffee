@@ -10,16 +10,10 @@
 Module = {}
 
 decode            = require './dcpu-decode'
-lem1802           = require './hw/lem1802'
-generic_clock     = require './hw/generic-clock'
-generic_keyboard  = require './hw/generic-keyboard'
 
 Value = decode.Value
 Instr = decode.Instr
 IStream = decode.IStream
-Lem1802 = lem1802.Lem1802
-GenericClock = generic_clock.GenericClock
-GenericKeyboard = generic_keyboard.GenericKeyboard
 
 class Dcpu16
   constructor: () ->
@@ -48,11 +42,7 @@ class Dcpu16
       if op?
         name = "_exec_#{op.id.toLowerCase()}"
         @mAdvExecutors[op.op] = name
-
     @mDevices = []
-    @mDevices.push new Lem1802 @
-    @mDevices.push new GenericClock @
-    @mDevices.push new GenericKeyboard @
     @mMappedRegions = []
 
   #
@@ -128,6 +118,8 @@ class Dcpu16
       if region.base != addr
         newList.push region
     @mMappedRegions = newList
+
+  addDevice: (dev) -> @mDevices.push dev
 
   #
   # Stack Helpers

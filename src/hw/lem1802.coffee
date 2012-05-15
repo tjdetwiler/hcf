@@ -11,9 +11,10 @@ device = require "./device"
 Device = device.Device
 
 class Lem1802 extends Device
-  constructor: (cpu) ->
+  constructor: (cpu, canvas=undefined) ->
     super "LEM1802", cpu
-    @mCtx = undefined
+    @mCanvas = canvas
+    @mCtx = if canvas? then canvas.getContext '2d'
     @mScale = 1
     @mScreenAddr = 0
     @mFontAddr = 0
@@ -21,6 +22,7 @@ class Lem1802 extends Device
     @mScreen = undefined
     @mUserFont = undefined
     @mUserPalette = undefined
+    @clear()
 
   id:   () -> 0x7349f615
   mfgr: () -> 0x1c6c8b38
@@ -39,7 +41,7 @@ class Lem1802 extends Device
       @unmapMemory @mScreenAddr
       @mScreen = undefined
     else
-      @mapMemory base, @VID_RAM_SIZE, @_screenCB
+      @mapMemory base, @VID_RAM_SIZE, @_screenCB()
       @mScreen = (0 for _ in [0..@VID_RAM_SIZE])
     @mScreenAddr = base
 
@@ -49,7 +51,7 @@ class Lem1802 extends Device
       @unmapMemory @mFontAddr
       @mUserFont = undefined
     else
-      @mapMemory base, @FONT_RAM_SIZE, @_fontCB
+      @mapMemory base, @FONT_RAM_SIZE, @_fontCB()
       @mUserFont = (0 for _ in [0..@FONT_RAM_SIZE])
     @mFontAddr = base
 
@@ -59,13 +61,12 @@ class Lem1802 extends Device
       @unmapMemory @mPaletteAddr
       @mUserPalette = undefined
     else
-      @mapMemory base, @PALETTE_RAM_SIZE, @_paletteCB
+      @mapMemory base, @PALETTE_RAM_SIZE, @_paletteCB()
       @mUserPalette = (0 for _ in [0..@PALETTE_RAM_SIZE])
     @mPaletteAddr = base
 
   setBorderColor:   () -> undefined
 
-  setCanvas: (canvas) -> @mCtx = canvas.getContext '2d'
   readFontRam:    (i) -> Lem1802.DFL_FONT[i]
   readPaletteRam: (i) -> Lem1802.DFL_PALETTE[i]
 
@@ -78,6 +79,7 @@ class Lem1802 extends Device
   # y - Y coordinate to place character
   #
   drawChar: (x,y,c) ->
+    console.log "Drawing char"
     # Can't draw without a context
     if not @mCtx? then return
     x = x*4
@@ -91,23 +93,37 @@ class Lem1802 extends Device
         x_ = x + 3 - Math.floor i/8
         y_ = y + (i%8)
         #TODO: Pull in FG color
-        ctx.fillStyle = "rgb(200,0,0)";
-        ctx.fillRect(x_*@mScale,y_*@mScale,@mScale,@mScale);
+        @mCtx.fillStyle = "rgb(200,0,0)"
+        @mCtx.fillRect(x_*@mScale,y_*@mScale,@mScale,@mScale)
     #TODO: Pull in BG color
-    ctx.fillStyle = "rgba(0, 0, 200, 0.5)";
-    ctx.fillRect(x*@mScale, y*@mScale, 4*@mScale, 8*@mScale);
+    @mCtx.fillStyle = "rgba(0, 0, 200, 0.5)"
+    @mCtx.fillRect(x*@mScale, y*@mScale, 4*@mScale, 8*@mScale)
+
+  clear: () ->
+    if not @mCtx? then return
+    @mCtx.fillStyle = "rgb(200,0,0)"
+    @mCtx.fillRect(0, 0, 150, 150)
 
   #
   # Memory Mapped Callbacks
   #
-  _screenCB:    (a,v) ->
-    console.log "Screen CB"
+  _screenCB:    () ->
+    lem = this
+    (a,v) ->
+      console.log "Screen CB"
+      x = a % 32
+      y = Math.floor a/32
+      lem.drawChar x,y,'f'
 
-  _fontCB:      (a,v) ->
-    console.log "Font CB"
+  _fontCB:      () ->
+    lem = this
+    (a,v) ->
+      console.log "Font CB"
 
-  _paletteCB:   (a,v) ->
-    console.log "Palette CB"
+  _paletteCB:   () ->
+    lem = this
+    (a,v) ->
+      console.log "Palette CB"
 
 
   VID_RAM_SIZE:     386
@@ -182,15 +198,15 @@ class Lem1802 extends Device
     0x0,0x0,  #64:  '@'
     0x0,0x0,  #65:  'A'
     0x0,0x0,  #66:  'B'
-    0x0,0x0,  #67:  'C'
+    0x00ff,0x8100,  #67:  'C'
     0x0,0x0,  #68:  'D'
     0x0,0x0,  #69:  'E'
-    0x0,0x0,  #70:  'F'
+    0xff09,0x0900,  #70:  'F'
     0x0,0x0,  #71:  'G'
     0x0,0x0,  #72:  'H'
     0x0,0x0,  #73:  'I'
     0x0,0x0,  #74:  'J'
-    0x0,0x0,  #75:  'K'
+    0xff18,0x6681,  #75:  'K'
     0x0,0x0,  #76:  'L'
     0x0,0x0,  #77:  'M'
     0x0,0x0,  #78:  'N'
@@ -200,7 +216,7 @@ class Lem1802 extends Device
     0x0,0x0,  #82:  'R'
     0x0,0x0,  #83:  'S'
     0x0,0x0,  #84:  'T'
-    0x0,0x0,  #85:  'U'
+    0xff80,0x80ff,  #85:  'U'
     0x0,0x0,  #86:  'V'
     0x0,0x0,  #87:  'W'
     0x0,0x0,  #88:  'X'
@@ -214,15 +230,15 @@ class Lem1802 extends Device
     0x0,0x0,  #96:  '`'
     0x0,0x0,  #97:  'a'
     0x0,0x0,  #98:  'b'
-    0x0,0x0,  #99:  'c'
+    0x00ff,0x8100,  #99:  'c'
     0x0,0x0,  #100: 'd'
     0x0,0x0,  #101: 'e'
-    0x0,0x0,  #102: 'f'
+    0xff09,0x0900,  #102: 'f'
     0x0,0x0,  #103: 'g'
     0x0,0x0,  #104: 'h'
     0x0,0x0,  #105: 'i'
     0x0,0x0,  #106: 'j'
-    0x0,0x0,  #107: 'k'
+    0xff18,0x6681,  #107: 'k'
     0x0,0x0,  #108: 'l'
     0x0,0x0,  #109: 'm'
     0x0,0x0,  #110: 'n'
@@ -232,7 +248,7 @@ class Lem1802 extends Device
     0x0,0x0,  #114: 'r'
     0x0,0x0,  #115: 's'
     0x0,0x0,  #116: 't'
-    0x0,0x0,  #117: 'u'
+    0xff80,0x80ff,  #117: 'u'
     0x0,0x0,  #118: 'v'
     0x0,0x0,  #119: 'w'
     0x0,0x0,  #120: 'x'

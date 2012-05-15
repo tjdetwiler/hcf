@@ -74,7 +74,7 @@
       this.isMem = false;
       this.isReg = false;
       this.mEncoding = enc;
-      this.mNext = 0;
+      this.mNext = void 0;
       if (raw) {
         this.mValue = enc;
         return;
@@ -88,7 +88,9 @@
         this.mValue = enc - 0x08;
       } else if ((0x10 <= enc && enc <= 0x17)) {
         this.isMem = true;
+        this.isReg = true;
         this.mNext = this.mIStream.nextWord();
+        this.mValue = enc - 0x10;
       } else if (enc === Value.VAL_POP) {
         "";
 
@@ -120,7 +122,11 @@
 
     Value.prototype.get = function(cpu) {
       var addr, sp;
-      if (this.isMem && this.isReg) {
+      if (this.isMem && this.isReg && (this.mNext != null)) {
+        addr = this.mNext;
+        addr += cpu.readReg(this.mValue);
+        return cpu.readMem(addr);
+      } else if (this.isMem && this.isReg) {
         addr = cpu.readReg(this.mValue);
         return cpu.readMem(addr);
       } else if (this.isMem) {
@@ -142,7 +148,11 @@
 
     Value.prototype.set = function(cpu, val) {
       var addr, sp;
-      if (this.isMem && this.isReg) {
+      if (this.isMem && this.isReg && (this.mNext != null)) {
+        addr = this.mNext;
+        addr += cpu.readReg(this.mValue);
+        return cpu.writeMem(addr, val);
+      } else if (this.isMem && this.isReg) {
         addr = cpu.readReg(this.mValue);
         return cpu.writeMem(addr, val);
       } else if (this.isMem) {

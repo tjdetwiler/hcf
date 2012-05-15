@@ -1,9 +1,10 @@
 
-$ = require 'jquery-browserify'
-dcpu = require '../dcpu'
-dasm = require '../dcpu-disasm'
-decode = require '../dcpu-decode'
-asm = require '../dcpu-asm'
+$         = require 'jquery-browserify'
+dcpu      = require '../dcpu'
+dasm      = require '../dcpu-disasm'
+decode    = require '../dcpu-decode'
+asm       = require '../dcpu-asm'
+lem1802   = require '../hw/lem1802'
 cpu = new dcpu.Dcpu16()
 
 onExec = (i) ->
@@ -90,4 +91,9 @@ $ () ->
     base = $("#membase").val()
     base = 0 if not base
     dumpMemory parseInt base
+
+  canvas = $("#framebuffer")[0]
+  console.log canvas
+  fb = new lem1802.Lem1802 cpu, canvas
+  cpu.addDevice fb
 

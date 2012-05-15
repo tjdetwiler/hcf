@@ -116,31 +116,23 @@
     </div>
     <div class="span5">
 <form><textarea id="code" class="code">
-    SET A,0x30
-    SET [0x1000],0x20
-    SUB A,[0x1000]
-    IFN A,0x10
-    SET PC,crash
-    SET I,10
-    SET A,0x2000
-:loop
-    SET [0x2000+I],[A]
-    SUB I,1
-    IFN I,0
-    SET PC,loop
-    SET X,0x4
-    JSR testsub
-    SET PC,crash
-:testsub
-    SHL X,4
-    SET PC,POP
-:crash
-    SET PC,crash
+:start  ; Map framebuffer RAM
+        set a, 0
+        set b, 0x1000
+        hwi 0
+
+        set i, 0
+:loop   set [0x1000+i], 0
+        add i, 1
+        ifn i, 0x1000
+        set pc, loop
+
+:crash  set pc, crash
 </textarea>
       <p id="asm-error"></p>
       </form>
     </div>
-    <canvas id="framebuffer" ></canvas>
+    <canvas id="framebuffer" width="150" height="150"></canvas>
 </div>
 
 <script>
