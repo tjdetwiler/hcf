@@ -71,6 +71,9 @@
         var prog, txt;
         if (!err) {
           prog = asm.assemble(data);
+          if (prog.result !== "success") {
+            console.log("ERROR: Line: " + prog.line + ": " + prog.message);
+          }
           if (toks[1] != null) {
             txt = JSON.stringify(prog);
             return fs.writeFile(toks[1], txt, function(err) {
@@ -79,7 +82,7 @@
               }
             });
           } else {
-            return cpu.loadBinary(prog);
+            return cpu.loadBinary(prog.code);
           }
         } else {
           return console.log("Error assembling file");

@@ -15,13 +15,6 @@ decode = require './dcpu-decode'
 Instr = decode.Instr
 
 class Disasm
-  @OPC_DISASM = [
-   "ADV", "SET", "ADD", "SUB", "MUL", "DIV", "MOD", "SHL",
-   "SHR", "AND", "BOR", "XOR", "IFE", "IFN", "IFG", "IFB"]
-
-  @ADV_OPC_DISASM = [
-   "RSV", "JSR"]
-
   @REG_DISASM = [
    "A", "B", "C", "X", "Y", "Z", "I", "J", "PC", "SP", "O"]
 
@@ -41,15 +34,14 @@ class Disasm
     if i.opc() == 0
       if i.valA().raw() == 0
         return ""
-      op = Disasm.ADV_OPC_DISASM[i.valA().raw()]
+      op = Instr.ADV_OPS[i.valA().raw()]
       va = Disasm.ppValue i.valB()
-      "#{op} #{va}"
+      "#{op.id} #{va}"
     else
-      op = Disasm.OPC_DISASM[i.opc()]
-      console.lo
+      op = Instr.BASIC_OPS[i.opc()]
       va = Disasm.ppValue i.valA()
       vb = Disasm.ppValue i.valB()
-      "#{op} #{va}, #{vb}"
+      "#{op.id} #{va}, #{vb}"
 
   @ppValue: (val) ->
     enc = val.raw()

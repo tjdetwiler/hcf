@@ -7,7 +7,10 @@
 
 Module = {}
 
+decode = require './dcpu-decode'
 dasm = require './dcpu-disasm'
+
+Instr = decode.Instr
 
 class RegValue
   constructor: (asm, reg) ->
@@ -91,7 +94,7 @@ class Instruction
 
   emit: (stream) ->
     enc = (v.encode() for v in @mVals)
-    instr = @mOp | (enc[0] << 4) | (enc[1] << 10)
+    instr = @mOp | (enc[0] << 5) | (enc[1] << 10)
     stream.push instr
     v.emit stream for v in @mVals
 
@@ -101,6 +104,11 @@ class Assembler
     @mLabels = {}
     @mPc = 0
     @mInstrs = []
+    @mOpcDict = {}
+    for op in Instr.BASIC_OPS
+      if op? then @mOpcDict[op.id.toUpperCase()] = op
+    for op in Instr.ADV_OPS
+      if op? then @mOpcDict[op.id.toUpperCase()] = op
 
   label: (name, addr) -> @mLabels[name] = addr
   lookup: (name) -> @mLabels[name]
@@ -179,7 +187,6 @@ class Assembler
     #   > Directive?
     #
     if line[0] is ":"
-      console.log "Found label"
       # Label
       toks = line.match /[^ \t]+/g
       @label toks[0][1..], @mPc
@@ -192,12 +199,12 @@ class Assembler
     else if match = line.match basic_regex
       # Basic Opcode
       [opc, valA, valB] = match[1..3]
-      if opc not in dasm.Disasm.OPC_DISASM
+      if not @mOpcDict[opc]?
         return r =
           result: "fail"
           message: "Unknown Opcode: #{opc}"
 
-      enc = dasm.Disasm.OPC_DISASM.indexOf opc
+      enc = @mOpcDict[opc].op
       @incPc()
       valA = @processValue valA
       if valA.result isnt "success" then return valA
@@ -208,11 +215,11 @@ class Assembler
         result: "success"
     else if match = line.match adv_regex
       [opc, valA] = match[1..2]
-      if opc not in dasm.Disasm.ADV_OPC_DISASM
+      if not @mOpcDict[opc]?
         return r =
           result: "fail"
           message: "Unknown Opcode: #{opc}"
-      enc = dasm.Disasm.ADV_OPC_DISASM.indexOf opc
+      enc = @mOpcDict[opc].op
       @incPc()
       valB = @processValue valA
       if valB.result isnt "success" then return valB

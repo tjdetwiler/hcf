@@ -17,7 +17,7 @@
     Dcpu16.name = 'Dcpu16';
 
     function Dcpu16() {
-      var cpu, x;
+      var cpu, name, op, x, _i, _j, _len, _len1, _ref, _ref1;
       cpu = this;
       this.mCycles = 0;
       this.mSkipNext = false;
@@ -44,6 +44,24 @@
           return cpu.mIStream.index(v);
         }, this._regGen(Value.REG_SP), this._regGen(Value.REG_O)
       ];
+      this.mExecutors = [];
+      this.mAdvExecutors = [];
+      _ref = Instr.BASIC_OPS;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        op = _ref[_i];
+        if (op != null) {
+          name = "_exec_" + (op.id.toLowerCase());
+          this.mExecutors[op.op] = name;
+        }
+      }
+      _ref1 = Instr.ADV_OPS;
+      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+        op = _ref1[_j];
+        if (op != null) {
+          name = "_exec_" + (op.id.toLowerCase());
+          this.mAdvExecutors[op.op] = name;
+        }
+      }
     }
 
     Dcpu16.prototype.onPreExec = function(fn) {
@@ -185,110 +203,13 @@
       return this.mRun = false;
     };
 
-    Dcpu16.prototype.execAdv = function(opc, valA) {
-      switch (opc) {
-        case Instr.ADV_JSR:
-          this.push(this.regPC());
-          return this.regPC(valA.get());
-      }
-    };
-
     Dcpu16.prototype.exec = function(opc, valA, valB) {
-      var v;
-      switch (opc) {
-        case Instr.OPC_ADV:
-          return this.execAdv(valA.raw(), valB);
-        case Instr.OPC_SET:
-          return valA.set(this, valB.get(this));
-        case Instr.OPC_ADD:
-          this.mCycles += 1;
-          v = valA.get(this) + valB.get(this);
-          if (v > 0xffff) {
-            this.regO(1);
-            v -= 0xffff;
-          } else {
-            this.regO(0);
-          }
-          return valA.set(this, v);
-        case Instr.OPC_SUB:
-          this.mCycles += 1;
-          v = valA.get(this) - valB.get(this);
-          if (v < 0) {
-            this.regO(0xffff);
-            v += 0xffff;
-          } else {
-            this.regO(0);
-          }
-          return valA.set(this, v);
-        case Instr.OPC_MUL:
-          this.mCycles += 1;
-          v = valA.get(this) * valB.get(this);
-          valA.set(this, v & 0xffff);
-          return this.regO((v >> 16) & 0xffff);
-        case Instr.OPC_DIV:
-          this.mCycles += 2;
-          if (valB.get(this) === 0) {
-            return regA.set(0);
-          } else {
-            v = valA.get(this) / valB.get(this);
-            valA.set(this, v & 0xffff);
-            return this.regO(((valA.get() << 16) / valB.get) & 0xffff);
-          }
-          break;
-        case Instr.OPC_MOD:
-          this.mCycles += 2;
-          if (valB.get(this) === 0) {
-            return regA.set(0);
-          } else {
-            return valA.set(valA.get(this) % valB.get(this));
-          }
-          break;
-        case Instr.OPC_SHL:
-          this.mCycles += 1;
-          valA.set(this, valA.get(this) << valB.get(this));
-          return this.regO(((valA.get(this) << valB.get(this)) >> 16) & 0xffff);
-        case Instr.OPC_SHR:
-          this.mCycles += 1;
-          valA.set(this, valA.get(this) >> valB.get(this));
-          return this.regO(((valA.get(this) << 16) >> valB.get(this)) & 0xffff);
-        case Instr.OPC_AND:
-          return valA.set(this, valA.get(this) & valB.get(this));
-        case Instr.OPC_BOR:
-          return valA.set(this, valA.get(this) | valB.get(this));
-        case Instr.OPC_XOR:
-          return valA.set(this, valA.get(this) ^ valB.get(this));
-        case Instr.OPC_IFE:
-          if (valA.get(this) === valB.get(this)) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
-          break;
-        case Instr.OPC_IFN:
-          if (valA.get(this) !== valB.get(this)) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
-          break;
-        case Instr.OPC_IFG:
-          if (valA.get(this) > valB.get(this)) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
-          break;
-        case Instr.OPC_IFB:
-          if ((valA.get(this) & valB.get(this)) !== 0) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
+      var f;
+      f = this.mExecutors[opc];
+      if (!(f != null)) {
+        return console.log("Unable to execute OPC " + opc);
       }
+      return this[f](valA, valB);
     };
 
     Dcpu16.prototype._regGen = function(n) {
@@ -301,6 +222,209 @@
           return cpu.mRegStorage[n];
         }
       };
+    };
+
+    Dcpu16.prototype._exec_adv = function(a, b) {
+      var f, opc;
+      opc = a.raw();
+      f = this.mAdvExecutors[opc];
+      if (!(f != null)) {
+        return console.log("Unable to execute Advanced Opcode " + opc);
+      }
+      return this[f](b);
+    };
+
+    Dcpu16.prototype._exec_set = function(a, b) {
+      return a.set(this, b.get(this));
+    };
+
+    Dcpu16.prototype._exec_add = function(a, b) {
+      var v;
+      v = a.get(this) + b.get(this);
+      if (v > 0xffff) {
+        this.regO(1);
+        v -= 0xffff;
+      } else {
+        this.regO(0);
+      }
+      return a.set(this, v);
+    };
+
+    Dcpu16.prototype._exec_sub = function(a, b) {
+      var v;
+      v = a.get(this) - b.get(this);
+      if (v < 0) {
+        this.regO(0xffff);
+        v += 0xffff;
+      } else {
+        this.regO(0);
+      }
+      return a.set(this, v);
+    };
+
+    Dcpu16.prototype._exec_mul = function(a, b) {
+      var v;
+      v = a.get(this) * b.get(this);
+      a.set(this, v & 0xffff);
+      return this.regO((v >> 16) & 0xffff);
+    };
+
+    Dcpu16.prototype._exec_div = function(a, b) {
+      var v;
+      if (b.get(this) === 0) {
+        return a.set(0);
+      } else {
+        v = a.get(this) / b.get(this);
+        a.set(this, v & 0xffff);
+        return this.regO(((a.get() << 16) / b.get) & 0xffff);
+      }
+    };
+
+    Dcpu16.prototype._exec_mod = function(a, b) {
+      if (b.get(this) === 0) {
+        return a.set(0);
+      } else {
+        return a.set(a.get(this) % b.get(this));
+      }
+    };
+
+    Dcpu16.prototype._exec_and = function(a, b) {
+      return a.set(this, a.get(this) & b.get(this));
+    };
+
+    Dcpu16.prototype._exec_bor = function(a, b) {
+      return a.set(this, a.get(this) | b.get(this));
+    };
+
+    Dcpu16.prototype._exec_xor = function(a, b) {
+      return a.set(this, a.get(this) ^ b.get(this));
+    };
+
+    Dcpu16.prototype._exec_shr = function(a, b) {
+      a.set(this, a.get(this) >> b.get(this));
+      return this.regO(((a.get(this) << 16) >> b.get(this)) & 0xffff);
+    };
+
+    Dcpu16.prototype._exec_shl = function(a, b) {
+      a.set(this, a.get(this) << b.get(this));
+      return this.regO(((a.get(this) << b.get(this)) >> 16) & 0xffff);
+    };
+
+    Dcpu16.prototype._exec_ife = function(a, b) {
+      if (a.get(this) === b.get(this)) {
+        return "";
+      } else {
+        return this.mSkipNext = true;
+      }
+    };
+
+    Dcpu16.prototype._exec_ifn = function(a, b) {
+      if (a.get(this) !== b.get(this)) {
+        return "";
+      } else {
+        return this.mSkipNext = true;
+      }
+    };
+
+    Dcpu16.prototype._exec_ifg = function(a, b) {
+      if (a.get(this) > b.get(this)) {
+        return "";
+      } else {
+        return this.mSkipNext = true;
+      }
+    };
+
+    Dcpu16.prototype._exec_ifb = function(a, b) {
+      if ((a.get(this) & b.get(this)) !== 0) {
+        return "";
+      } else {
+        return this.mSkipNext = true;
+      }
+    };
+
+    Dcpu16.prototype._exec_mli = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ash = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_dvi = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_mdi = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ifc = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ifa = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ifl = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ifu = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_adf = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_sbx = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_sti = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_std = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_jsr = function(a) {
+      this.push(this.regPC());
+      return this.regPC(a.get());
+    };
+
+    Dcpu16.prototype._exec_int = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_iag = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ias = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_rfi = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_iaq = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_hwn = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_hwq = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_hwi = function(a) {
+      return;
     };
 
     return Dcpu16;

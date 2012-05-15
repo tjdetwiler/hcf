@@ -9779,7 +9779,7 @@ require.define("/dcpu.js", function (require, module, exports, __dirname, __file
     Dcpu16.name = 'Dcpu16';
 
     function Dcpu16() {
-      var cpu, x;
+      var cpu, name, op, x, _i, _j, _len, _len1, _ref, _ref1;
       cpu = this;
       this.mCycles = 0;
       this.mSkipNext = false;
@@ -9806,6 +9806,24 @@ require.define("/dcpu.js", function (require, module, exports, __dirname, __file
           return cpu.mIStream.index(v);
         }, this._regGen(Value.REG_SP), this._regGen(Value.REG_O)
       ];
+      this.mExecutors = [];
+      this.mAdvExecutors = [];
+      _ref = Instr.BASIC_OPS;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        op = _ref[_i];
+        if (op != null) {
+          name = "_exec_" + (op.id.toLowerCase());
+          this.mExecutors[op.op] = name;
+        }
+      }
+      _ref1 = Instr.ADV_OPS;
+      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+        op = _ref1[_j];
+        if (op != null) {
+          name = "_exec_" + (op.id.toLowerCase());
+          this.mAdvExecutors[op.op] = name;
+        }
+      }
     }
 
     Dcpu16.prototype.onPreExec = function(fn) {
@@ -9947,110 +9965,13 @@ require.define("/dcpu.js", function (require, module, exports, __dirname, __file
       return this.mRun = false;
     };
 
-    Dcpu16.prototype.execAdv = function(opc, valA) {
-      switch (opc) {
-        case Instr.ADV_JSR:
-          this.push(this.regPC());
-          return this.regPC(valA.get());
-      }
-    };
-
     Dcpu16.prototype.exec = function(opc, valA, valB) {
-      var v;
-      switch (opc) {
-        case Instr.OPC_ADV:
-          return this.execAdv(valA.raw(), valB);
-        case Instr.OPC_SET:
-          return valA.set(this, valB.get(this));
-        case Instr.OPC_ADD:
-          this.mCycles += 1;
-          v = valA.get(this) + valB.get(this);
-          if (v > 0xffff) {
-            this.regO(1);
-            v -= 0xffff;
-          } else {
-            this.regO(0);
-          }
-          return valA.set(this, v);
-        case Instr.OPC_SUB:
-          this.mCycles += 1;
-          v = valA.get(this) - valB.get(this);
-          if (v < 0) {
-            this.regO(0xffff);
-            v += 0xffff;
-          } else {
-            this.regO(0);
-          }
-          return valA.set(this, v);
-        case Instr.OPC_MUL:
-          this.mCycles += 1;
-          v = valA.get(this) * valB.get(this);
-          valA.set(this, v & 0xffff);
-          return this.regO((v >> 16) & 0xffff);
-        case Instr.OPC_DIV:
-          this.mCycles += 2;
-          if (valB.get(this) === 0) {
-            return regA.set(0);
-          } else {
-            v = valA.get(this) / valB.get(this);
-            valA.set(this, v & 0xffff);
-            return this.regO(((valA.get() << 16) / valB.get) & 0xffff);
-          }
-          break;
-        case Instr.OPC_MOD:
-          this.mCycles += 2;
-          if (valB.get(this) === 0) {
-            return regA.set(0);
-          } else {
-            return valA.set(valA.get(this) % valB.get(this));
-          }
-          break;
-        case Instr.OPC_SHL:
-          this.mCycles += 1;
-          valA.set(this, valA.get(this) << valB.get(this));
-          return this.regO(((valA.get(this) << valB.get(this)) >> 16) & 0xffff);
-        case Instr.OPC_SHR:
-          this.mCycles += 1;
-          valA.set(this, valA.get(this) >> valB.get(this));
-          return this.regO(((valA.get(this) << 16) >> valB.get(this)) & 0xffff);
-        case Instr.OPC_AND:
-          return valA.set(this, valA.get(this) & valB.get(this));
-        case Instr.OPC_BOR:
-          return valA.set(this, valA.get(this) | valB.get(this));
-        case Instr.OPC_XOR:
-          return valA.set(this, valA.get(this) ^ valB.get(this));
-        case Instr.OPC_IFE:
-          if (valA.get(this) === valB.get(this)) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
-          break;
-        case Instr.OPC_IFN:
-          if (valA.get(this) !== valB.get(this)) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
-          break;
-        case Instr.OPC_IFG:
-          if (valA.get(this) > valB.get(this)) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
-          break;
-        case Instr.OPC_IFB:
-          if ((valA.get(this) & valB.get(this)) !== 0) {
-            return this.mCycles += 2;
-          } else {
-            this.mSkipNext = true;
-            return this.mCycles += 1;
-          }
+      var f;
+      f = this.mExecutors[opc];
+      if (!(f != null)) {
+        return console.log("Unable to execute OPC " + opc);
       }
+      return this[f](valA, valB);
     };
 
     Dcpu16.prototype._regGen = function(n) {
@@ -10063,6 +9984,209 @@ require.define("/dcpu.js", function (require, module, exports, __dirname, __file
           return cpu.mRegStorage[n];
         }
       };
+    };
+
+    Dcpu16.prototype._exec_adv = function(a, b) {
+      var f, opc;
+      opc = a.raw();
+      f = this.mAdvExecutors[opc];
+      if (!(f != null)) {
+        return console.log("Unable to execute Advanced Opcode " + opc);
+      }
+      return this[f](b);
+    };
+
+    Dcpu16.prototype._exec_set = function(a, b) {
+      return a.set(this, b.get(this));
+    };
+
+    Dcpu16.prototype._exec_add = function(a, b) {
+      var v;
+      v = a.get(this) + b.get(this);
+      if (v > 0xffff) {
+        this.regO(1);
+        v -= 0xffff;
+      } else {
+        this.regO(0);
+      }
+      return a.set(this, v);
+    };
+
+    Dcpu16.prototype._exec_sub = function(a, b) {
+      var v;
+      v = a.get(this) - b.get(this);
+      if (v < 0) {
+        this.regO(0xffff);
+        v += 0xffff;
+      } else {
+        this.regO(0);
+      }
+      return a.set(this, v);
+    };
+
+    Dcpu16.prototype._exec_mul = function(a, b) {
+      var v;
+      v = a.get(this) * b.get(this);
+      a.set(this, v & 0xffff);
+      return this.regO((v >> 16) & 0xffff);
+    };
+
+    Dcpu16.prototype._exec_div = function(a, b) {
+      var v;
+      if (b.get(this) === 0) {
+        return a.set(0);
+      } else {
+        v = a.get(this) / b.get(this);
+        a.set(this, v & 0xffff);
+        return this.regO(((a.get() << 16) / b.get) & 0xffff);
+      }
+    };
+
+    Dcpu16.prototype._exec_mod = function(a, b) {
+      if (b.get(this) === 0) {
+        return a.set(0);
+      } else {
+        return a.set(a.get(this) % b.get(this));
+      }
+    };
+
+    Dcpu16.prototype._exec_and = function(a, b) {
+      return a.set(this, a.get(this) & b.get(this));
+    };
+
+    Dcpu16.prototype._exec_bor = function(a, b) {
+      return a.set(this, a.get(this) | b.get(this));
+    };
+
+    Dcpu16.prototype._exec_xor = function(a, b) {
+      return a.set(this, a.get(this) ^ b.get(this));
+    };
+
+    Dcpu16.prototype._exec_shr = function(a, b) {
+      a.set(this, a.get(this) >> b.get(this));
+      return this.regO(((a.get(this) << 16) >> b.get(this)) & 0xffff);
+    };
+
+    Dcpu16.prototype._exec_shl = function(a, b) {
+      a.set(this, a.get(this) << b.get(this));
+      return this.regO(((a.get(this) << b.get(this)) >> 16) & 0xffff);
+    };
+
+    Dcpu16.prototype._exec_ife = function(a, b) {
+      if (a.get(this) === b.get(this)) {
+        return "";
+      } else {
+        return this.mSkipNext = true;
+      }
+    };
+
+    Dcpu16.prototype._exec_ifn = function(a, b) {
+      if (a.get(this) !== b.get(this)) {
+        return "";
+      } else {
+        return this.mSkipNext = true;
+      }
+    };
+
+    Dcpu16.prototype._exec_ifg = function(a, b) {
+      if (a.get(this) > b.get(this)) {
+        return "";
+      } else {
+        return this.mSkipNext = true;
+      }
+    };
+
+    Dcpu16.prototype._exec_ifb = function(a, b) {
+      if ((a.get(this) & b.get(this)) !== 0) {
+        return "";
+      } else {
+        return this.mSkipNext = true;
+      }
+    };
+
+    Dcpu16.prototype._exec_mli = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ash = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_dvi = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_mdi = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ifc = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ifa = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ifl = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ifu = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_adf = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_sbx = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_sti = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_std = function(a, b) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_jsr = function(a) {
+      this.push(this.regPC());
+      return this.regPC(a.get());
+    };
+
+    Dcpu16.prototype._exec_int = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_iag = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_ias = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_rfi = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_iaq = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_hwn = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_hwq = function(a) {
+      return;
+    };
+
+    Dcpu16.prototype._exec_hwi = function(a) {
+      return;
     };
 
     return Dcpu16;
@@ -10214,7 +10338,6 @@ require.define("/dcpu-decode.js", function (require, module, exports, __dirname,
         addr = cpu.readReg(this.mValue);
         return cpu.writeMem(addr, val);
       } else if (this.isMem) {
-        console.log("Writing " + val + " to " + this.mValue);
         return cpu.writeMem(this.mValue, val);
       } else if (this.isReg) {
         return cpu.writeReg(this.mValue, val);
@@ -10239,31 +10362,214 @@ require.define("/dcpu-decode.js", function (require, module, exports, __dirname,
   })();
 
   Instr = (function() {
-    var _i, _ref, _ref1, _results;
 
     Instr.name = 'Instr';
 
-    _ref = (function() {
-      _results = [];
-      for (var _i = 0x0; 0x0 <= 0xf ? _i <= 0xf : _i >= 0xf; 0x0 <= 0xf ? _i++ : _i--){ _results.push(_i); }
-      return _results;
-    }).apply(this), Instr.OPC_ADV = _ref[0], Instr.OPC_SET = _ref[1], Instr.OPC_ADD = _ref[2], Instr.OPC_SUB = _ref[3], Instr.OPC_MUL = _ref[4], Instr.OPC_DIV = _ref[5], Instr.OPC_MOD = _ref[6], Instr.OPC_SHL = _ref[7], Instr.OPC_SHR = _ref[8], Instr.OPC_AND = _ref[9], Instr.OPC_BOR = _ref[10], Instr.OPC_XOR = _ref[11], Instr.OPC_IFE = _ref[12], Instr.OPC_IFN = _ref[13], Instr.OPC_IFG = _ref[14], Instr.OPC_IFB = _ref[15];
+    Instr.BASIC_OPS = [
+      Instr.OPC_ADV = {
+        op: 0x00,
+        id: "adv",
+        cond: false
+      }, Instr.OPC_SET = {
+        op: 0x01,
+        id: "set",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_ADD = {
+        op: 0x02,
+        id: "add",
+        cost: 2,
+        cond: false
+      }, Instr.OPC_SUB = {
+        op: 0x03,
+        id: "sub",
+        cost: 2,
+        cond: false
+      }, Instr.OPC_MUL = {
+        op: 0x04,
+        id: "mul",
+        cost: 2,
+        cond: false
+      }, Instr.OPC_MLI = {
+        op: 0x05,
+        id: "mli",
+        cost: 2,
+        cond: false
+      }, Instr.OPC_DIV = {
+        op: 0x06,
+        id: "div",
+        cost: 3,
+        cond: false
+      }, Instr.OPC_DVI = {
+        op: 0x07,
+        id: "dvi",
+        cost: 3,
+        cond: false
+      }, Instr.OPC_MOD = {
+        op: 0x08,
+        id: "mod",
+        cost: 3,
+        cond: false
+      }, Instr.OPC_MDI = {
+        op: 0x09,
+        id: "mdi",
+        cost: 3,
+        cond: false
+      }, Instr.OPC_AND = {
+        op: 0x0a,
+        id: "and",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_BOR = {
+        op: 0x0b,
+        id: "bor",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_XOR = {
+        op: 0x0c,
+        id: "xor",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_SHR = {
+        op: 0x0d,
+        id: "shr",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_ASR = {
+        op: 0x0e,
+        id: "asr",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_SHL = {
+        op: 0x0f,
+        id: "shl",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_IFB = {
+        op: 0x10,
+        id: "ifb",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFC = {
+        op: 0x11,
+        id: "ifc",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFE = {
+        op: 0x12,
+        id: "ife",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFN = {
+        op: 0x13,
+        id: "ifn",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFG = {
+        op: 0x14,
+        id: "ifg",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFA = {
+        op: 0x15,
+        id: "ifa",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFL = {
+        op: 0x16,
+        id: "ifl",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFU = {
+        op: 0x17,
+        id: "ifu",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_ADX = {
+        op: 0x1a,
+        id: "adx",
+        cost: 3,
+        cond: false
+      }, Instr.OPC_SBX = {
+        op: 0x1b,
+        id: "sbx",
+        cost: 3,
+        cond: false
+      }, void 0, void 0, Instr.OPC_STI = {
+        op: 0x1e,
+        id: "sti",
+        cost: 2,
+        cond: false
+      }, Instr.OPC_STD = {
+        op: 0x1f,
+        id: "std",
+        cost: 2,
+        cond: false
+      }
+    ];
 
-    _ref1 = [0, 1], Instr.ADV_RSV = _ref1[0], Instr.ADV_JSR = _ref1[1];
+    Instr.ADV_OPS = [
+      void 0, Instr.ADV_JSR = {
+        op: 0x01,
+        id: "jsr",
+        cost: 3,
+        cond: false
+      }, void 0, void 0, void 0, void 0, void 0, void 0, Instr.ADV_INT = {
+        op: 0x08,
+        id: "int",
+        cost: 4,
+        cond: false
+      }, Instr.ADV_IAG = {
+        op: 0x09,
+        id: "iag",
+        cost: 1,
+        cond: false
+      }, Instr.ADV_IAS = {
+        op: 0x0a,
+        id: "ias",
+        cost: 1,
+        cond: false
+      }, Instr.ADV_RFI = {
+        op: 0x0b,
+        id: "rfi",
+        cost: 3,
+        cond: false
+      }, Instr.ADV_IAQ = {
+        op: 0x0c,
+        id: "iaq",
+        cost: 2,
+        cond: false
+      }, void 0, void 0, void 0, Instr.ADV_HWN = {
+        op: 0x10,
+        id: "hwn",
+        cost: 2,
+        cond: false
+      }, Instr.ADV_HWQ = {
+        op: 0x11,
+        id: "hwq",
+        cost: 4,
+        cond: false
+      }, Instr.ADV_HWI = {
+        op: 0x12,
+        id: "hwi",
+        cost: 4,
+        cond: false
+      }
+    ];
 
     function Instr(stream) {
-      var _ref2;
+      var _ref;
       this.mIStream = stream;
       this.mAddr = this.mIStream.index();
-      _ref2 = this.decode(this.mIStream.nextWord()), this.mOpc = _ref2[0], this.mValA = _ref2[1], this.mValB = _ref2[2];
+      _ref = this.decode(this.mIStream.nextWord()), this.mOpc = _ref[0], this.mValA = _ref[1], this.mValB = _ref[2];
     }
 
     Instr.prototype.decode = function(instr) {
       var opcode, valA, valB;
       opcode = instr & this.OPCODE_MASK();
-      valA = (instr & this.VALA_MASK()) >> 4;
-      valB = (instr & this.VALB_MASK()) >> 10;
-      return [opcode, new Value(this.mIStream, valA), new Value(this.mIStream, valB)];
+      valB = (instr & this.VALB_MASK()) >> 5;
+      valA = (instr & this.VALA_MASK()) >> 10;
+      return [opcode, new Value(this.mIStream, valB), new Value(this.mIStream, valA)];
     };
 
     Instr.prototype.opc = function() {
@@ -10283,14 +10589,14 @@ require.define("/dcpu-decode.js", function (require, module, exports, __dirname,
     };
 
     Instr.prototype.OPCODE_MASK = function() {
-      return 0x000f;
-    };
-
-    Instr.prototype.VALA_MASK = function() {
-      return 0x03f0;
+      return 0x001f;
     };
 
     Instr.prototype.VALB_MASK = function() {
+      return 0x03e0;
+    };
+
+    Instr.prototype.VALA_MASK = function() {
       return 0xfc00;
     };
 
@@ -10325,10 +10631,6 @@ require.define("/dcpu-disasm.js", function (require, module, exports, __dirname,
 
     function Disasm() {}
 
-    Disasm.OPC_DISASM = ["ADV", "SET", "ADD", "SUB", "MUL", "DIV", "MOD", "SHL", "SHR", "AND", "BOR", "XOR", "IFE", "IFN", "IFG", "IFB"];
-
-    Disasm.ADV_OPC_DISASM = ["RSV", "JSR"];
-
     Disasm.REG_DISASM = ["A", "B", "C", "X", "Y", "Z", "I", "J", "PC", "SP", "O"];
 
     Disasm.fmtHex = function(n, pad) {
@@ -10356,15 +10658,14 @@ require.define("/dcpu-disasm.js", function (require, module, exports, __dirname,
         if (i.valA().raw() === 0) {
           return "";
         }
-        op = Disasm.ADV_OPC_DISASM[i.valA().raw()];
+        op = Instr.ADV_OPS[i.valA().raw()];
         va = Disasm.ppValue(i.valB());
-        return "" + op + " " + va;
+        return "" + op.id + " " + va;
       } else {
-        op = Disasm.OPC_DISASM[i.opc()];
-        console.lo;
+        op = Instr.BASIC_OPS[i.opc()];
         va = Disasm.ppValue(i.valA());
         vb = Disasm.ppValue(i.valB());
-        return "" + op + " " + va + ", " + vb;
+        return "" + op.id + " " + va + ", " + vb;
       }
     };
 
@@ -10419,12 +10720,15 @@ require.define("/dcpu-disasm.js", function (require, module, exports, __dirname,
 require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __filename) {
 // Generated by CoffeeScript 1.3.1
 (function() {
-  var Assembler, Instruction, LabelValue, LitValue, MemValue, Module, RawValue, RegValue, SpecialValue, dasm,
-    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+  var Assembler, Instr, Instruction, LabelValue, LitValue, MemValue, Module, RawValue, RegValue, SpecialValue, dasm, decode;
 
   Module = {};
 
+  decode = require('./dcpu-decode');
+
   dasm = require('./dcpu-disasm');
+
+  Instr = decode.Instr;
 
   RegValue = (function() {
 
@@ -10624,7 +10928,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
         }
         return _results;
       }).call(this);
-      instr = this.mOp | (enc[0] << 4) | (enc[1] << 10);
+      instr = this.mOp | (enc[0] << 5) | (enc[1] << 10);
       stream.push(instr);
       _ref = this.mVals;
       _results = [];
@@ -10644,10 +10948,26 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     Assembler.name = 'Assembler';
 
     function Assembler() {
+      var op, _i, _j, _len, _len1, _ref, _ref1;
       this.mText = "";
       this.mLabels = {};
       this.mPc = 0;
       this.mInstrs = [];
+      this.mOpcDict = {};
+      _ref = Instr.BASIC_OPS;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        op = _ref[_i];
+        if (op != null) {
+          this.mOpcDict[op.id.toUpperCase()] = op;
+        }
+      }
+      _ref1 = Instr.ADV_OPS;
+      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+        op = _ref1[_j];
+        if (op != null) {
+          this.mOpcDict[op.id.toUpperCase()] = op;
+        }
+      }
     }
 
     Assembler.prototype.label = function(name, addr) {
@@ -10733,7 +11053,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
       basic_regex = /(\w+)\s+([^,]+)\s*,\s*([^,]+)/;
       adv_regex = /(\w+)\s+([^,]+)/;
       if (line[0] === ":") {
-        console.log("Found label");
         toks = line.match(/[^ \t]+/g);
         this.label(toks[0].slice(1), this.mPc);
         return this.processLine(toks.slice(1).join(" "));
@@ -10743,13 +11062,13 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
         };
       } else if (match = line.match(basic_regex)) {
         _ref = match.slice(1, 4), opc = _ref[0], valA = _ref[1], valB = _ref[2];
-        if (__indexOf.call(dasm.Disasm.OPC_DISASM, opc) < 0) {
+        if (!(this.mOpcDict[opc] != null)) {
           return r = {
             result: "fail",
             message: "Unknown Opcode: " + opc
           };
         }
-        enc = dasm.Disasm.OPC_DISASM.indexOf(opc);
+        enc = this.mOpcDict[opc].op;
         this.incPc();
         valA = this.processValue(valA);
         if (valA.result !== "success") {
@@ -10765,13 +11084,13 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
         };
       } else if (match = line.match(adv_regex)) {
         _ref1 = match.slice(1, 3), opc = _ref1[0], valA = _ref1[1];
-        if (__indexOf.call(dasm.Disasm.ADV_OPC_DISASM, opc) < 0) {
+        if (!(this.mOpcDict[opc] != null)) {
           return r = {
             result: "fail",
             message: "Unknown Opcode: " + opc
           };
         }
-        enc = dasm.Disasm.ADV_OPC_DISASM.indexOf(opc);
+        enc = this.mOpcDict[opc].op;
         this.incPc();
         valB = this.processValue(valA);
         if (valB.result !== "success") {

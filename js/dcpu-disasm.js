@@ -14,10 +14,6 @@
 
     function Disasm() {}
 
-    Disasm.OPC_DISASM = ["ADV", "SET", "ADD", "SUB", "MUL", "DIV", "MOD", "SHL", "SHR", "AND", "BOR", "XOR", "IFE", "IFN", "IFG", "IFB"];
-
-    Disasm.ADV_OPC_DISASM = ["RSV", "JSR"];
-
     Disasm.REG_DISASM = ["A", "B", "C", "X", "Y", "Z", "I", "J", "PC", "SP", "O"];
 
     Disasm.fmtHex = function(n, pad) {
@@ -45,15 +41,14 @@
         if (i.valA().raw() === 0) {
           return "";
         }
-        op = Disasm.ADV_OPC_DISASM[i.valA().raw()];
+        op = Instr.ADV_OPS[i.valA().raw()];
         va = Disasm.ppValue(i.valB());
-        return "" + op + " " + va;
+        return "" + op.id + " " + va;
       } else {
-        op = Disasm.OPC_DISASM[i.opc()];
-        console.lo;
+        op = Instr.BASIC_OPS[i.opc()];
         va = Disasm.ppValue(i.valA());
         vb = Disasm.ppValue(i.valB());
-        return "" + op + " " + va + ", " + vb;
+        return "" + op.id + " " + va + ", " + vb;
       }
     };
 

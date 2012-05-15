@@ -136,7 +136,6 @@
         addr = cpu.readReg(this.mValue);
         return cpu.writeMem(addr, val);
       } else if (this.isMem) {
-        console.log("Writing " + val + " to " + this.mValue);
         return cpu.writeMem(this.mValue, val);
       } else if (this.isReg) {
         return cpu.writeReg(this.mValue, val);
@@ -161,31 +160,214 @@
   })();
 
   Instr = (function() {
-    var _i, _ref, _ref1, _results;
 
     Instr.name = 'Instr';
 
-    _ref = (function() {
-      _results = [];
-      for (var _i = 0x0; 0x0 <= 0xf ? _i <= 0xf : _i >= 0xf; 0x0 <= 0xf ? _i++ : _i--){ _results.push(_i); }
-      return _results;
-    }).apply(this), Instr.OPC_ADV = _ref[0], Instr.OPC_SET = _ref[1], Instr.OPC_ADD = _ref[2], Instr.OPC_SUB = _ref[3], Instr.OPC_MUL = _ref[4], Instr.OPC_DIV = _ref[5], Instr.OPC_MOD = _ref[6], Instr.OPC_SHL = _ref[7], Instr.OPC_SHR = _ref[8], Instr.OPC_AND = _ref[9], Instr.OPC_BOR = _ref[10], Instr.OPC_XOR = _ref[11], Instr.OPC_IFE = _ref[12], Instr.OPC_IFN = _ref[13], Instr.OPC_IFG = _ref[14], Instr.OPC_IFB = _ref[15];
+    Instr.BASIC_OPS = [
+      Instr.OPC_ADV = {
+        op: 0x00,
+        id: "adv",
+        cond: false
+      }, Instr.OPC_SET = {
+        op: 0x01,
+        id: "set",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_ADD = {
+        op: 0x02,
+        id: "add",
+        cost: 2,
+        cond: false
+      }, Instr.OPC_SUB = {
+        op: 0x03,
+        id: "sub",
+        cost: 2,
+        cond: false
+      }, Instr.OPC_MUL = {
+        op: 0x04,
+        id: "mul",
+        cost: 2,
+        cond: false
+      }, Instr.OPC_MLI = {
+        op: 0x05,
+        id: "mli",
+        cost: 2,
+        cond: false
+      }, Instr.OPC_DIV = {
+        op: 0x06,
+        id: "div",
+        cost: 3,
+        cond: false
+      }, Instr.OPC_DVI = {
+        op: 0x07,
+        id: "dvi",
+        cost: 3,
+        cond: false
+      }, Instr.OPC_MOD = {
+        op: 0x08,
+        id: "mod",
+        cost: 3,
+        cond: false
+      }, Instr.OPC_MDI = {
+        op: 0x09,
+        id: "mdi",
+        cost: 3,
+        cond: false
+      }, Instr.OPC_AND = {
+        op: 0x0a,
+        id: "and",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_BOR = {
+        op: 0x0b,
+        id: "bor",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_XOR = {
+        op: 0x0c,
+        id: "xor",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_SHR = {
+        op: 0x0d,
+        id: "shr",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_ASR = {
+        op: 0x0e,
+        id: "asr",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_SHL = {
+        op: 0x0f,
+        id: "shl",
+        cost: 1,
+        cond: false
+      }, Instr.OPC_IFB = {
+        op: 0x10,
+        id: "ifb",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFC = {
+        op: 0x11,
+        id: "ifc",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFE = {
+        op: 0x12,
+        id: "ife",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFN = {
+        op: 0x13,
+        id: "ifn",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFG = {
+        op: 0x14,
+        id: "ifg",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFA = {
+        op: 0x15,
+        id: "ifa",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFL = {
+        op: 0x16,
+        id: "ifl",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_IFU = {
+        op: 0x17,
+        id: "ifu",
+        cost: 2,
+        cond: true
+      }, Instr.OPC_ADX = {
+        op: 0x1a,
+        id: "adx",
+        cost: 3,
+        cond: false
+      }, Instr.OPC_SBX = {
+        op: 0x1b,
+        id: "sbx",
+        cost: 3,
+        cond: false
+      }, void 0, void 0, Instr.OPC_STI = {
+        op: 0x1e,
+        id: "sti",
+        cost: 2,
+        cond: false
+      }, Instr.OPC_STD = {
+        op: 0x1f,
+        id: "std",
+        cost: 2,
+        cond: false
+      }
+    ];
 
-    _ref1 = [0, 1], Instr.ADV_RSV = _ref1[0], Instr.ADV_JSR = _ref1[1];
+    Instr.ADV_OPS = [
+      void 0, Instr.ADV_JSR = {
+        op: 0x01,
+        id: "jsr",
+        cost: 3,
+        cond: false
+      }, void 0, void 0, void 0, void 0, void 0, void 0, Instr.ADV_INT = {
+        op: 0x08,
+        id: "int",
+        cost: 4,
+        cond: false
+      }, Instr.ADV_IAG = {
+        op: 0x09,
+        id: "iag",
+        cost: 1,
+        cond: false
+      }, Instr.ADV_IAS = {
+        op: 0x0a,
+        id: "ias",
+        cost: 1,
+        cond: false
+      }, Instr.ADV_RFI = {
+        op: 0x0b,
+        id: "rfi",
+        cost: 3,
+        cond: false
+      }, Instr.ADV_IAQ = {
+        op: 0x0c,
+        id: "iaq",
+        cost: 2,
+        cond: false
+      }, void 0, void 0, void 0, Instr.ADV_HWN = {
+        op: 0x10,
+        id: "hwn",
+        cost: 2,
+        cond: false
+      }, Instr.ADV_HWQ = {
+        op: 0x11,
+        id: "hwq",
+        cost: 4,
+        cond: false
+      }, Instr.ADV_HWI = {
+        op: 0x12,
+        id: "hwi",
+        cost: 4,
+        cond: false
+      }
+    ];
 
     function Instr(stream) {
-      var _ref2;
+      var _ref;
       this.mIStream = stream;
       this.mAddr = this.mIStream.index();
-      _ref2 = this.decode(this.mIStream.nextWord()), this.mOpc = _ref2[0], this.mValA = _ref2[1], this.mValB = _ref2[2];
+      _ref = this.decode(this.mIStream.nextWord()), this.mOpc = _ref[0], this.mValA = _ref[1], this.mValB = _ref[2];
     }
 
     Instr.prototype.decode = function(instr) {
       var opcode, valA, valB;
       opcode = instr & this.OPCODE_MASK();
-      valA = (instr & this.VALA_MASK()) >> 4;
-      valB = (instr & this.VALB_MASK()) >> 10;
-      return [opcode, new Value(this.mIStream, valA), new Value(this.mIStream, valB)];
+      valB = (instr & this.VALB_MASK()) >> 5;
+      valA = (instr & this.VALA_MASK()) >> 10;
+      return [opcode, new Value(this.mIStream, valB), new Value(this.mIStream, valA)];
     };
 
     Instr.prototype.opc = function() {
@@ -205,14 +387,14 @@
     };
 
     Instr.prototype.OPCODE_MASK = function() {
-      return 0x000f;
-    };
-
-    Instr.prototype.VALA_MASK = function() {
-      return 0x03f0;
+      return 0x001f;
     };
 
     Instr.prototype.VALB_MASK = function() {
+      return 0x03e0;
+    };
+
+    Instr.prototype.VALA_MASK = function() {
       return 0xfc00;
     };
 

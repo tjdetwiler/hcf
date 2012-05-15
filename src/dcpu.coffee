@@ -31,7 +31,17 @@ class Dcpu16
       (v) -> cpu.mIStream.index(v), 
       @_regGen(Value.REG_SP), @_regGen(Value.REG_O)
     ]
- 
+    @mExecutors = []
+    @mAdvExecutors = []
+    for op in Instr.BASIC_OPS
+      if op?
+        name = "_exec_#{op.id.toLowerCase()}"
+        @mExecutors[op.op] = name
+    for op in Instr.ADV_OPS
+      if op?
+        name = "_exec_#{op.id.toLowerCase()}"
+        @mAdvExecutors[op.op] = name
+
   #
   # Event setter functions.
   #
@@ -124,105 +134,11 @@ class Dcpu16
 
   stop: () -> @mRun = false
 
-  #
-  # Execution Logic
-  #
-  # exec: Interprets an instruction and updates CPU state.
-  # execAdv: Helper for exec to execute an Advanced Instruction
-  #
-  execAdv: (opc, valA) ->
-    switch opc
-      when Instr.ADV_JSR
-        @push @regPC()
-        @regPC valA.get()
-
   exec: (opc, valA, valB) ->
-    #
-    # Fetching the first word of the instr takes 1 cycle, so the
-    # instructions only need to account for any additional cycles.
-    #
-    # Values will add cycles themselves when they're fetched.
-    #
-    switch opc
-      when Instr.OPC_ADV
-        @execAdv valA.raw(), valB
-      when Instr.OPC_SET
-        valA.set @, valB.get @
-      when Instr.OPC_ADD
-        @mCycles += 1
-        v = valA.get(@) + valB.get(@)
-        if v > 0xffff
-          @regO 1
-          v -= 0xffff
-        else
-          @regO 0
-        valA.set @,v
-      when Instr.OPC_SUB
-        @mCycles += 1
-        v = valA.get(@) - valB.get(@)
-        if v < 0
-          @regO 0xffff
-          v += 0xffff
-        else
-          @regO 0
-        valA.set @,v
-      when Instr.OPC_MUL
-        @mCycles += 1
-        v = valA.get(@) * valB.get(@)
-        valA.set @, v & 0xffff
-        @regO ((v>>16) & 0xffff)
-      when Instr.OPC_DIV
-        @mCycles += 2
-        if valB.get(@) is 0
-          regA.set 0
-        else 
-          v = valA.get(@) / valB.get(@)
-          valA.set @, v & 0xffff
-          @regO (((valA.get() << 16)/valB.get)&0xffff)
-      when Instr.OPC_MOD
-        @mCycles += 2
-        if valB.get(@) is 0
-          regA.set 0
-        else
-          valA.set valA.get(@) % valB.get(@)
-      when Instr.OPC_SHL
-        @mCycles += 1
-        valA.set @, valA.get(@) << valB.get(@)
-        @regO (((valA.get(@)<<valB.get(@))>>16)&0xffff)
-      when Instr.OPC_SHR
-        @mCycles += 1
-        valA.set @, valA.get(@) >> valB.get(@)
-        @regO (((valA.get(@) << 16)>>valB.get(@))&0xffff)
-      when Instr.OPC_AND
-        valA.set @, valA.get(@) & valB.get(@)
-      when Instr.OPC_BOR
-        valA.set @, valA.get(@) | valB.get(@)
-      when Instr.OPC_XOR
-        valA.set @, valA.get(@) ^ valB.get(@)
-      when Instr.OPC_IFE
-        if valA.get(@) == valB.get(@)
-          @mCycles += 2
-        else
-          @mSkipNext=true
-          @mCycles += 1
-      when Instr.OPC_IFN
-        if valA.get(@) != valB.get(@)
-          @mCycles += 2
-        else
-          @mSkipNext=true
-          @mCycles += 1
-      when Instr.OPC_IFG
-        if valA.get(@) > valB.get(@)
-          @mCycles += 2
-        else
-          @mSkipNext=true
-          @mCycles += 1
-      when Instr.OPC_IFB
-        if (valA.get(@) & valB.get(@)) != 0
-          @mCycles += 2
-        else
-          @mSkipNext=true
-          @mCycles += 1
+    f = @mExecutors[opc]
+    if not f?
+      return console.log "Unable to execute OPC #{opc}"
+    this[f] valA, valB
 
   #
   # Generates a register access function
@@ -234,5 +150,132 @@ class Dcpu16
         cpu.mRegStorage[n]=v
       else
         cpu.mRegStorage[n]
+
+  #
+  # Instruction Execution Logic
+  #
+  # Define a function of the name _exec_{opcode}. For example, the
+  # instruction SET PC, 0x1000 will be handled by 
+  #
+  # _exec_adv is a special case for basic opcode '0'.
+  #
+  _exec_adv: (a,b) ->
+    opc =  a.raw()
+    f = @mAdvExecutors[opc]
+    if not f?
+      return console.log "Unable to execute Advanced Opcode #{opc}"
+    this[f] b
+
+  _exec_set: (a,b) ->
+    a.set @, b.get @
+
+  _exec_add: (a,b) ->
+    v = a.get(@) + b.get(@)
+    if v > 0xffff
+      @regO 1
+      v -= 0xffff
+    else
+      @regO 0
+    a.set @,v
+
+  _exec_sub: (a,b) ->
+    v = a.get(@) - b.get(@)
+    if v < 0
+      @regO 0xffff
+      v += 0xffff
+    else
+      @regO 0
+    a.set @,v
+
+  _exec_mul: (a,b) ->
+    v = a.get(@) * b.get(@)
+    a.set @, v & 0xffff
+    @regO ((v>>16) & 0xffff)
+
+  _exec_div: (a,b) ->
+    if b.get(@) is 0
+      a.set 0
+    else 
+      v = a.get(@) / b.get(@)
+      a.set @, v & 0xffff
+      @regO (((a.get() << 16)/b.get)&0xffff)
+
+  _exec_mod: (a,b) ->
+    if b.get(@) is 0
+      a.set 0
+    else
+      a.set a.get(@) % b.get(@)
+
+  _exec_and: (a,b) ->
+    a.set @, a.get(@) & b.get(@)
+
+  _exec_bor: (a,b) ->
+    a.set @, a.get(@) | b.get(@)
+
+  _exec_xor: (a,b) ->
+    a.set @, a.get(@) ^ b.get(@)
+
+  _exec_shr: (a,b) ->
+    a.set @, a.get(@) >> b.get(@)
+    @regO (((a.get(@) << 16)>>b.get(@))&0xffff)
+
+
+  _exec_shl: (a,b) ->
+    a.set @, a.get(@) << b.get(@)
+    @regO (((a.get(@)<<b.get(@))>>16)&0xffff)
+
+  _exec_ife: (a,b) ->
+    if a.get(@) == b.get(@)
+      ""
+    else
+      @mSkipNext=true
+
+  _exec_ifn: (a,b) ->
+    if a.get(@) != b.get(@)
+      ""
+    else
+      @mSkipNext=true
+
+  _exec_ifg: (a,b) ->
+    if a.get(@) > b.get(@)
+      ""
+    else
+      @mSkipNext=true
+
+  _exec_ifb: (a,b) ->
+    if (a.get(@) & b.get(@)) != 0
+      ""
+    else
+      @mSkipNext=true
+
+  #
+  # TODO: These
+  #
+  _exec_mli: (a,b) -> undefined
+  _exec_ash: (a,b) -> undefined
+  _exec_dvi: (a,b) -> undefined
+  _exec_mdi: (a,b) -> undefined
+  _exec_ifc: (a,b) -> undefined
+  _exec_ifa: (a,b) -> undefined
+  _exec_ifl: (a,b) -> undefined
+  _exec_ifu: (a,b) -> undefined
+  _exec_adf: (a,b) -> undefined
+  _exec_sbx: (a,b) -> undefined
+  _exec_sti: (a,b) -> undefined
+  _exec_std: (a,b) -> undefined
+
+  _exec_jsr: (a)   ->
+    @push @regPC()
+    @regPC a.get()
+
+  _exec_int: (a)   -> undefined
+  _exec_iag: (a)   -> undefined
+  _exec_ias: (a)   -> undefined
+  _exec_rfi: (a)   -> undefined
+  _exec_iaq: (a)   -> undefined
+  _exec_hwn: (a)   -> undefined
+  _exec_hwq: (a)   -> undefined
+  _exec_hwi: (a)   -> undefined
+ 
 
 exports.Dcpu16 = Dcpu16
