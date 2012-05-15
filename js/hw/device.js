@@ -37,15 +37,15 @@
     };
 
     Device.prototype.interrupt = function(m) {
-      return;
+      return this.mCpu.interrupt(m);
     };
 
-    Device.prototype.mapMemory = function(base, len) {
-      return;
+    Device.prototype.mapMemory = function(base, len, cb) {
+      return this.mCpu.mapDevice(base, len, cb);
     };
 
     Device.prototype.unmapMemory = function(base) {
-      return;
+      return this.mCpu.unmapDevice(base);
     };
 
     Device.prototype.fromMfgrId = function(mfgr, id, ver) {

@@ -53,6 +53,8 @@ class Dcpu16
     @mDevices.push new Lem1802 @
     @mDevices.push new GenericClock @
     @mDevices.push new GenericKeyboard @
+    @mMappedRegions = []
+
   #
   # Event setter functions.
   #
@@ -89,12 +91,43 @@ class Dcpu16
   writeReg: (n,val) -> @reg n, val
 
   #
-  # Memory Accessors
+  # Memory Interface
   #
-  # Reads or writes a word or RAM
+  # readMem/writeMem - Basic memory access
+  # isMapped - Deterimine if an address is mapped to a device
+  # mapDevice - Map a block of address space to a device
+  # unmapDevice - Unmap a block of device memory
   #
-  readMem:  (addr) -> @mMemory[addr]
-  writeMem: (addr, val) -> @mMemory[addr] = val
+  readMem:  (addr) ->
+    region = @isMapped addr
+    if region
+      region.f addr - region.base
+    else
+      @mMemory[addr]
+
+  writeMem: (addr, val) ->
+    region = @isMapped addr
+    if region
+      region.f addr - region.base, val
+    else
+      @mMemory[addr] = val
+
+  isMapped:  (addr) ->
+    for region in @mMappedRegions
+      if region.base <= addr < region.base + region.len
+        return region
+    return null
+
+  mapDevice: (addr, len, cb) ->
+    @mMappedRegions.push {base: addr, len: len, f: cb}
+
+  unmapDevice: (addr) ->
+    newList = []
+    for i in [0..@mMappedRegions.length-1]
+      region = @mMappedRegions[i]
+      if region.base != addr
+        newList.push region
+    @mMappedRegions = newList
 
   #
   # Stack Helpers

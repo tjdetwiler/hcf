@@ -79,6 +79,7 @@
       this.mDevices.push(new Lem1802(this));
       this.mDevices.push(new GenericClock(this));
       this.mDevices.push(new GenericKeyboard(this));
+      this.mMappedRegions = [];
     }
 
     Dcpu16.prototype.onPreExec = function(fn) {
@@ -154,11 +155,55 @@
     };
 
     Dcpu16.prototype.readMem = function(addr) {
-      return this.mMemory[addr];
+      var region;
+      region = this.isMapped(addr);
+      if (region) {
+        return region.f(addr - region.base);
+      } else {
+        return this.mMemory[addr];
+      }
     };
 
     Dcpu16.prototype.writeMem = function(addr, val) {
-      return this.mMemory[addr] = val;
+      var region;
+      region = this.isMapped(addr);
+      if (region) {
+        return region.f(addr - region.base, val);
+      } else {
+        return this.mMemory[addr] = val;
+      }
+    };
+
+    Dcpu16.prototype.isMapped = function(addr) {
+      var region, _i, _len, _ref;
+      _ref = this.mMappedRegions;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        region = _ref[_i];
+        if ((region.base <= addr && addr < region.base + region.len)) {
+          return region;
+        }
+      }
+      return null;
+    };
+
+    Dcpu16.prototype.mapDevice = function(addr, len, cb) {
+      return this.mMappedRegions.push({
+        base: addr,
+        len: len,
+        f: cb
+      });
+    };
+
+    Dcpu16.prototype.unmapDevice = function(addr) {
+      var i, newList, region, _i, _ref;
+      newList = [];
+      for (i = _i = 0, _ref = this.mMappedRegions.length - 1; 0 <= _ref ? _i <= _ref : _i >= _ref; i = 0 <= _ref ? ++_i : --_i) {
+        region = this.mMappedRegions[i];
+        if (region.base !== addr) {
+          newList.push(region);
+        }
+      }
+      return this.mMappedRegions = newList;
     };
 
     Dcpu16.prototype.push = function(v) {

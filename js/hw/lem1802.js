@@ -18,8 +18,14 @@
 
     function Lem1802(cpu) {
       Lem1802.__super__.constructor.call(this, "LEM1802", cpu);
+      this.mCtx = void 0;
+      this.mScale = 1;
+      this.mScreenAddr = 0;
       this.mFontAddr = 0;
       this.mPaletteAddr = 0;
+      this.mScreen = void 0;
+      this.mUserFont = void 0;
+      this.mUserPalette = void 0;
     }
 
     Lem1802.prototype.id = function() {
@@ -50,37 +56,119 @@
     };
 
     Lem1802.prototype.memMapScreen = function() {
-      var base;
+      var base, _;
       base = this.mCpu.regB();
-      return this.mapMemory(base, this.VID_RAM_SIZE);
+      if (base === 0) {
+        this.unmapMemory(this.mScreenAddr);
+        this.mScreen = void 0;
+      } else {
+        this.mapMemory(base, this.VID_RAM_SIZE, this._screenCB);
+        this.mScreen = (function() {
+          var _i, _ref, _results;
+          _results = [];
+          for (_ = _i = 0, _ref = this.VID_RAM_SIZE; 0 <= _ref ? _i <= _ref : _i >= _ref; _ = 0 <= _ref ? ++_i : --_i) {
+            _results.push(0);
+          }
+          return _results;
+        }).call(this);
+      }
+      return this.mScreenAddr = base;
     };
 
     Lem1802.prototype.memMapFont = function() {
-      var base;
+      var base, _;
       base = this.mCpu.regB();
       if (base === 0) {
         this.unmapMemory(this.mFontAddr);
-        return this.mFontAddr = 0;
+        this.mUserFont = void 0;
       } else {
-        this.mapMemory(base, this.FONT_RAM_SIZE);
-        return this.mFontAddr = base;
+        this.mapMemory(base, this.FONT_RAM_SIZE, this._fontCB);
+        this.mUserFont = (function() {
+          var _i, _ref, _results;
+          _results = [];
+          for (_ = _i = 0, _ref = this.FONT_RAM_SIZE; 0 <= _ref ? _i <= _ref : _i >= _ref; _ = 0 <= _ref ? ++_i : --_i) {
+            _results.push(0);
+          }
+          return _results;
+        }).call(this);
       }
+      return this.mFontAddr = base;
     };
 
     Lem1802.prototype.memMapPalette = function() {
-      var base;
+      var base, _;
       base = this.mCpu.regB();
       if (base === 0) {
         this.unmapMemory(this.mPaletteAddr);
-        return this.mPaletteAddr = 0;
+        this.mUserPalette = void 0;
       } else {
-        this.mapMemory(base, this.PALETTE_RAM_SIZE);
-        return this.mPaletteAddr = base;
+        this.mapMemory(base, this.PALETTE_RAM_SIZE, this._paletteCB);
+        this.mUserPalette = (function() {
+          var _i, _ref, _results;
+          _results = [];
+          for (_ = _i = 0, _ref = this.PALETTE_RAM_SIZE; 0 <= _ref ? _i <= _ref : _i >= _ref; _ = 0 <= _ref ? ++_i : --_i) {
+            _results.push(0);
+          }
+          return _results;
+        }).call(this);
       }
+      return this.mPaletteAddr = base;
     };
 
     Lem1802.prototype.setBorderColor = function() {
       return;
+    };
+
+    Lem1802.prototype.setCanvas = function(canvas) {
+      return this.mCtx = canvas.getContext('2d');
+    };
+
+    Lem1802.prototype.readFontRam = function(i) {
+      return Lem1802.DFL_FONT[i];
+    };
+
+    Lem1802.prototype.readPaletteRam = function(i) {
+      return Lem1802.DFL_PALETTE[i];
+    };
+
+    Lem1802.prototype.getChar = function(c) {
+      var ascii;
+      ascii = c.charCodeAt(0);
+      return [this.readFontRam(ascii, this.readFontRam(ascii + 1))];
+    };
+
+    Lem1802.prototype.drawChar = function(x, y, c) {
+      var bit, i, word, x_, y_, _i;
+      if (!(this.mCtx != null)) {
+        return;
+      }
+      x = x * 4;
+      y = y * 8;
+      c = this.getChar(c);
+      for (i = _i = 31; _i >= 0; i = --_i) {
+        word = Math.floor(1 / 16);
+        bit = i % 16;
+        if (c[1 - word] & (1 << bit)) {
+          x_ = x + 3 - Math.floor(i / 8);
+          y_ = y + (i % 8);
+          ctx.fillStyle = "rgb(200,0,0)";
+          ctx.fillRect(x_ * this.mScale, y_ * this.mScale, this.mScale, this.mScale);
+        }
+      }
+      ctx.fillStyle = "rgba(0, 0, 200, 0.5)";
+      return ctx.fillRect(x * this.mScale, y * this.mScale, 4 * this.mScale, 8 * this.mScale);
+    };
+
+    Lem1802.prototype._screenCB = function(a, v) {
+      return console.log("Screen CB");
+    };
+
+    Lem1802.prototype._fontCB = function(a, v) {
+      return console.log("Font CB");
+    };
+
+    Lem1802.prototype._paletteCB = function(a, v) {
+      return console.log("Palette CB");
     };
 
     Lem1802.prototype.VID_RAM_SIZE = 386;

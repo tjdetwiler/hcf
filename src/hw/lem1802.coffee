@@ -13,8 +13,14 @@ Device = device.Device
 class Lem1802 extends Device
   constructor: (cpu) ->
     super "LEM1802", cpu
+    @mCtx = undefined
+    @mScale = 1
+    @mScreenAddr = 0
     @mFontAddr = 0
     @mPaletteAddr = 0
+    @mScreen = undefined
+    @mUserFont = undefined
+    @mUserPalette = undefined
 
   id:   () -> 0x7349f615
   mfgr: () -> 0x1c6c8b38
@@ -29,27 +35,79 @@ class Lem1802 extends Device
 
   memMapScreen:     () ->
     base = @mCpu.regB()
-    @mapMemory base, @VID_RAM_SIZE
+    if base is 0
+      @unmapMemory @mScreenAddr
+      @mScreen = undefined
+    else
+      @mapMemory base, @VID_RAM_SIZE, @_screenCB
+      @mScreen = (0 for _ in [0..@VID_RAM_SIZE])
+    @mScreenAddr = base
 
   memMapFont:       () ->
     base = @mCpu.regB()
     if base is 0
       @unmapMemory @mFontAddr
-      @mFontAddr = 0
+      @mUserFont = undefined
     else
-      @mapMemory base, @FONT_RAM_SIZE
-      @mFontAddr = base
+      @mapMemory base, @FONT_RAM_SIZE, @_fontCB
+      @mUserFont = (0 for _ in [0..@FONT_RAM_SIZE])
+    @mFontAddr = base
 
   memMapPalette:    () ->
     base = @mCpu.regB()
     if base is 0
       @unmapMemory @mPaletteAddr
-      @mPaletteAddr = 0
+      @mUserPalette = undefined
     else
-      @mapMemory base, @PALETTE_RAM_SIZE
-      @mPaletteAddr = base
+      @mapMemory base, @PALETTE_RAM_SIZE, @_paletteCB
+      @mUserPalette = (0 for _ in [0..@PALETTE_RAM_SIZE])
+    @mPaletteAddr = base
 
   setBorderColor:   () -> undefined
+
+  setCanvas: (canvas) -> @mCtx = canvas.getContext '2d'
+  readFontRam:    (i) -> Lem1802.DFL_FONT[i]
+  readPaletteRam: (i) -> Lem1802.DFL_PALETTE[i]
+
+  getChar: (c) ->
+    ascii = c.charCodeAt 0
+    [@readFontRam ascii, @readFontRam ascii+1]
+
+  #
+  # x - X coordinate to place character
+  # y - Y coordinate to place character
+  #
+  drawChar: (x,y,c) ->
+    # Can't draw without a context
+    if not @mCtx? then return
+    x = x*4
+    y = y*8
+
+    c = @getChar c
+    for i in [31..0]
+      word = Math.floor 1/16
+      bit  = i % 16
+      if c[1-word] & (1<<bit)
+        x_ = x + 3 - Math.floor i/8
+        y_ = y + (i%8)
+        #TODO: Pull in FG color
+        ctx.fillStyle = "rgb(200,0,0)";
+        ctx.fillRect(x_*@mScale,y_*@mScale,@mScale,@mScale);
+    #TODO: Pull in BG color
+    ctx.fillStyle = "rgba(0, 0, 200, 0.5)";
+    ctx.fillRect(x*@mScale, y*@mScale, 4*@mScale, 8*@mScale);
+
+  #
+  # Memory Mapped Callbacks
+  #
+  _screenCB:    (a,v) ->
+    console.log "Screen CB"
+
+  _fontCB:      (a,v) ->
+    console.log "Font CB"
+
+  _paletteCB:   (a,v) ->
+    console.log "Palette CB"
 
 
   VID_RAM_SIZE:     386

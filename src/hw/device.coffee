@@ -32,10 +32,9 @@ class Device
   #
   # Sends an interrupt to the CPU
   #
-  interrupt: (m) -> undefined
-
-  mapMemory: (base, len) -> undefined
-  unmapMemory: (base) -> undefined
+  interrupt: (m) -> @mCpu.interrupt m
+  mapMemory: (base, len, cb) -> @mCpu.mapDevice base, len, cb
+  unmapMemory: (base) -> @mCpu.unmapDevice base
 
   #
   # Helper function for 'query' to decompose HW id values into
