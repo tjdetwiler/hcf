@@ -108,8 +108,9 @@ class Dcpu16Shell extends cmd.Cmd
     console.log "I:  0x#{f @dcpu.regI()}\t
  J:  0x#{f @dcpu.regJ()}"
     console.log "PC: 0x#{f @dcpu.regPC()}\t
- SP: 0x#{f @dcpu.regSP()}\t
- O: 0x#{f @dcpu.regO()}"
+ SP: 0x#{f @dcpu.regSP()}"
+    console.log "EX: 0x#{f @dcpu.regEX()}\t
+ IA: 0x#{f @dcpu.regIA()}"
   help_regs: () -> console.log "Print DCPU Registers."
 
   #

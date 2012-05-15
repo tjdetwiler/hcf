@@ -5,13 +5,14 @@
 # Generic System Clock
 # Based on the spec at: http://dcpu.com/highnerd/rc_1/clock.txt
 #
+Module = {}
 
 device = require "./device"
 
 Device = device.Device
 
 class GenericClock extends Device
-  constructor: (cpu)
+  constructor: (cpu) ->
     super "Generic Clock", cpu
     @mCount = 0
     @mLastCount = 0
@@ -21,7 +22,7 @@ class GenericClock extends Device
   mfgr: () -> 0x0
   ver:  () -> 0x1
 
-  hwInterrupt: (n) -> switch n
+  hwInterrupt: () -> switch @mCpu.regA()
     when 0 then @setRate()
     when 1 then @getTicks()
     when 2 then @setInterrupts()
@@ -37,3 +38,5 @@ class GenericClock extends Device
 
   setInterrupts:  () ->
     @mIrqMsg = @mCpu.regB()
+
+exports.GenericClock = GenericClock

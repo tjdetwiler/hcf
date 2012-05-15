@@ -42,34 +42,43 @@
   })();
 
   Value = (function() {
-    var _i, _j, _k, _ref, _ref1, _ref2, _results, _results1, _results2;
+    var _i, _ref, _results;
 
     Value.name = 'Value';
 
     _ref = (function() {
       _results = [];
-      for (var _i = 0x0; 0x0 <= 0xa ? _i <= 0xa : _i >= 0xa; 0x0 <= 0xa ? _i++ : _i--){ _results.push(_i); }
+      for (var _i = 0x0; 0x0 <= 0xb ? _i <= 0xb : _i >= 0xb; 0x0 <= 0xb ? _i++ : _i--){ _results.push(_i); }
       return _results;
-    }).apply(this), Value.REG_A = _ref[0], Value.REG_B = _ref[1], Value.REG_C = _ref[2], Value.REG_X = _ref[3], Value.REG_Y = _ref[4], Value.REG_Z = _ref[5], Value.REG_I = _ref[6], Value.REG_J = _ref[7], Value.REG_PC = _ref[8], Value.REG_SP = _ref[9], Value.REG_O = _ref[10];
+    }).apply(this), Value.REG_A = _ref[0], Value.REG_B = _ref[1], Value.REG_C = _ref[2], Value.REG_X = _ref[3], Value.REG_Y = _ref[4], Value.REG_Z = _ref[5], Value.REG_I = _ref[6], Value.REG_J = _ref[7], Value.REG_PC = _ref[8], Value.REG_SP = _ref[9], Value.REG_EX = _ref[10], Value.REG_IA = _ref[11];
 
-    _ref1 = (function() {
-      _results1 = [];
-      for (var _j = 0x18; 0x18 <= 0x1a ? _j <= 0x1a : _j >= 0x1a; 0x18 <= 0x1a ? _j++ : _j--){ _results1.push(_j); }
-      return _results1;
-    }).apply(this), Value.VAL_POP = _ref1[0], Value.VAL_PEEK = _ref1[1], Value.VAL_PUSH = _ref1[2];
+    Value.VAL_POP = 0x18;
 
-    _ref2 = (function() {
-      _results2 = [];
-      for (var _k = 0x1b; 0x1b <= 0x1d ? _k <= 0x1d : _k >= 0x1d; 0x1b <= 0x1d ? _k++ : _k--){ _results2.push(_k); }
-      return _results2;
-    }).apply(this), Value.VAL_SP = _ref2[0], Value.VAL_PC = _ref2[1], Value.VAL_O = _ref2[2];
+    Value.VAL_PUSH = 0x18;
 
-    function Value(stream, enc) {
+    Value.VAL_PEEK = 0x19;
+
+    Value.VAL_PICK = 0x1a;
+
+    Value.VAL_SP = 0x1b;
+
+    Value.VAL_PC = 0x1c;
+
+    Value.VAL_EX = 0x1d;
+
+    function Value(stream, enc, raw) {
+      if (raw == null) {
+        raw = false;
+      }
       this.mIStream = stream;
       this.isMem = false;
       this.isReg = false;
       this.mEncoding = enc;
       this.mNext = 0;
+      if (raw) {
+        this.mValue = enc;
+        return;
+      }
       if ((0x00 <= enc && enc <= 0x07)) {
         this.isReg = true;
         this.mValue = enc;
@@ -86,18 +95,17 @@
       } else if (enc === Value.VAL_PEEK) {
         "";
 
-      } else if (enc === Value.VAL_PUSH) {
-        "";
-
+      } else if (enc === Value.VAL_PICK) {
+        this.mNext = this.mIStream.nextWord();
       } else if (enc === Value.VAL_SP) {
         this.isReg = true;
         this.mValue = Value.REG_SP;
       } else if (enc === Value.VAL_PC) {
         this.isReg = true;
         this.mValue = Value.REG_PC;
-      } else if (enc === Value.VAL_O) {
+      } else if (enc === Value.VAL_EX) {
         this.isReg = true;
-        this.mValue = Value.REG_O;
+        this.mValue = Value.REG_EX;
       } else if (enc === 0x1e) {
         this.isMem = true;
         this.mNext = this.mIStream.nextWord();
@@ -111,7 +119,7 @@
     }
 
     Value.prototype.get = function(cpu) {
-      var addr;
+      var addr, sp;
       if (this.isMem && this.isReg) {
         addr = cpu.readReg(this.mValue);
         return cpu.readMem(addr);
@@ -121,17 +129,19 @@
         return cpu.readReg(this.mValue);
       } else if (this.mEncoding === Value.VAL_POP) {
         return cpu.pop();
-      } else if (this.mEncoding === Value.VAL_PUSH) {
-        return console.log("ERROR: Trying to 'get' PUSH");
       } else if (this.mEncoding === Value.VAL_PEEK) {
         return cpu.peek();
+      } else if (this.mEncoding === Value.VAL_PICK) {
+        sp = cpu.regSP();
+        addr = sp + this.mNext;
+        return cpu.readMem(addr);
       } else {
         return this.mValue;
       }
     };
 
     Value.prototype.set = function(cpu, val) {
-      var addr;
+      var addr, sp;
       if (this.isMem && this.isReg) {
         addr = cpu.readReg(this.mValue);
         return cpu.writeMem(addr, val);
@@ -139,13 +149,14 @@
         return cpu.writeMem(this.mValue, val);
       } else if (this.isReg) {
         return cpu.writeReg(this.mValue, val);
-      } else if (this.mEncoding === Value.VAL_POP) {
-        return console.log("ERROR: Trying to 'set' POP");
       } else if (this.mEncoding === Value.VAL_PUSH) {
-        console.log("Pushing " + val);
         return cpu.push(val);
       } else if (this.mEncoding === Value.VAL_PEEK) {
         return console.log("ERROR: Trying to 'set' PEEK");
+      } else if (this.mEncoding === Value.VAL_PICK) {
+        sp = cpu.regSP();
+        addr = sp + this.mNext;
+        return cpu.writeMem(addr, val);
       } else {
         return console.log("Error: Attempt to 'set' a literal value");
       }
@@ -367,7 +378,13 @@
       opcode = instr & this.OPCODE_MASK();
       valB = (instr & this.VALB_MASK()) >> 5;
       valA = (instr & this.VALA_MASK()) >> 10;
-      return [opcode, new Value(this.mIStream, valB), new Value(this.mIStream, valA)];
+      if (opcode === 0) {
+        valB = new Value(this.mIStream, valB, true);
+      } else {
+        valB = new Value(this.mIStream, valB);
+      }
+      valA = new Value(this.mIStream, valA);
+      return [opcode, valB, valA];
     };
 
     Instr.prototype.opc = function() {

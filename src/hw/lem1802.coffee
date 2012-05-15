@@ -5,13 +5,13 @@
 # LEM1802 Display Device.
 # Based on the spec at: http://dcpu.com/highnerd/lem1802.txt
 #
+Module = {}
 
 device = require "./device"
-
 Device = device.Device
 
 class Lem1802 extends Device
-  constructor: (cpu)
+  constructor: (cpu) ->
     super "LEM1802", cpu
     @mFontAddr = 0
     @mPaletteAddr = 0
@@ -20,7 +20,7 @@ class Lem1802 extends Device
   mfgr: () -> 0x1c6c8b38
   ver:  () -> 0x1802
 
-  hwInterrupt: (n) -> switch n
+  hwInterrupt: () -> switch @mCpu.regA()
     when 0 then @memMapScreen()
     when 1 then @memMapFont()
     when 2 then @memMapPalette()
@@ -37,7 +37,7 @@ class Lem1802 extends Device
       @unmapMemory @mFontAddr
       @mFontAddr = 0
     else
-      @mapMemory base. @FONT_RAM_SIZE
+      @mapMemory base, @FONT_RAM_SIZE
       @mFontAddr = base
 
   memMapPalette:    () ->
@@ -46,7 +46,7 @@ class Lem1802 extends Device
       @unmapMemory @mPaletteAddr
       @mPaletteAddr = 0
     else
-      @mapMemory base. @PALETTE_RAM_SIZE
+      @mapMemory base, @PALETTE_RAM_SIZE
       @mPaletteAddr = base
 
   setBorderColor:   () -> undefined
@@ -204,3 +204,5 @@ class Lem1802 extends Device
     0x0,
     0x0,
   ]
+
+exports.Lem1802 = Lem1802

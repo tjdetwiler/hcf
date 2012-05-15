@@ -126,7 +126,8 @@
       console.log("A:  0x" + (f(this.dcpu.regA())) + "\t B:  0x" + (f(this.dcpu.regB())) + "\t C: 0x" + (f(this.dcpu.regC())));
       console.log("X:  0x" + (f(this.dcpu.regX())) + "\t Y:  0x" + (f(this.dcpu.regY())) + "\t Z: 0x" + (f(this.dcpu.regZ())));
       console.log("I:  0x" + (f(this.dcpu.regI())) + "\t J:  0x" + (f(this.dcpu.regJ())));
-      return console.log("PC: 0x" + (f(this.dcpu.regPC())) + "\t SP: 0x" + (f(this.dcpu.regSP())) + "\t O: 0x" + (f(this.dcpu.regO())));
+      console.log("PC: 0x" + (f(this.dcpu.regPC())) + "\t SP: 0x" + (f(this.dcpu.regSP())));
+      return console.log("EX: 0x" + (f(this.dcpu.regEX())) + "\t IA: 0x" + (f(this.dcpu.regIA())));
     };
 
     Dcpu16Shell.prototype.help_regs = function() {

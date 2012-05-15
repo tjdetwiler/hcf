@@ -26,17 +26,26 @@ class Value
   #
   [@REG_A, @REG_B, @REG_C, @REG_X,  @REG_Y,
    @REG_Z, @REG_I, @REG_J, @REG_PC, @REG_SP,
-   @REG_O] = [0x0..0xa]
+   @REG_EX, @REG_IA] = [0x0..0xb]
 
-  [@VAL_POP, @VAL_PEEK, @VAL_PUSH] = [0x18..0x1a]
-  [@VAL_SP, @VAL_PC, @VAL_O] = [0x1b..0x1d]
+  @VAL_POP  = 0x18
+  @VAL_PUSH = 0x18
+  @VAL_PEEK = 0x19
+  @VAL_PICK = 0x1a
+  @VAL_SP   = 0x1b
+  @VAL_PC   = 0x1c
+  @VAL_EX   = 0x1d
 
-  constructor: (stream, enc) ->
+  constructor: (stream, enc, raw=false) ->
     @mIStream = stream
     @isMem = false
     @isReg = false
     @mEncoding = enc
     @mNext=0
+
+    if raw
+      @mValue = enc
+      return
 
     #
     # Decode Value
@@ -55,17 +64,17 @@ class Value
       ""
     else if enc == Value.VAL_PEEK
       ""
-    else if enc == Value.VAL_PUSH
-      ""
+    else if enc == Value.VAL_PICK
+      @mNext = @mIStream.nextWord()
     else if enc == Value.VAL_SP
       @isReg = true
       @mValue = Value.REG_SP
     else if enc == Value.VAL_PC
       @isReg = true
       @mValue = Value.REG_PC
-    else if enc == Value.VAL_O
+    else if enc == Value.VAL_EX
       @isReg = true
-      @mValue = Value.REG_O
+      @mValue = Value.REG_EX
     else if enc == 0x1e
       @isMem = true
       @mNext = @mIStream.nextWord()
@@ -86,10 +95,12 @@ class Value
       cpu.readReg @mValue
     else if @mEncoding is Value.VAL_POP
       cpu.pop()
-    else if @mEncoding is Value.VAL_PUSH
-      console.log "ERROR: Trying to 'get' PUSH"
     else if @mEncoding is Value.VAL_PEEK
       cpu.peek()
+    else if @mEncoding is Value.VAL_PICK
+      sp = cpu.regSP()
+      addr = sp + @mNext
+      cpu.readMem addr
     else
       @mValue
     
@@ -101,13 +112,14 @@ class Value
       cpu.writeMem @mValue, val
     else if @isReg
       cpu.writeReg @mValue, val
-    else if @mEncoding is Value.VAL_POP
-      console.log "ERROR: Trying to 'set' POP"
     else if @mEncoding is Value.VAL_PUSH
-      console.log "Pushing #{val}"
       cpu.push val
     else if @mEncoding is Value.VAL_PEEK
       console.log "ERROR: Trying to 'set' PEEK"
+    else if @mEncoding is Value.VAL_PICK
+      sp = cpu.regSP()
+      addr = sp + @mNext
+      cpu.writeMem addr, val
     else
       console.log "Error: Attempt to 'set' a literal value"
 
@@ -182,7 +194,14 @@ class Instr
     opcode = instr & @OPCODE_MASK()
     valB   = (instr & @VALB_MASK()) >> 5
     valA   = (instr & @VALA_MASK()) >> 10
-    [opcode, new Value(@mIStream,valB), new Value(@mIStream,valA)]
+
+    if opcode == 0
+      valB = new Value @mIStream, valB, true
+    else
+      valB = new Value @mIStream, valB
+    valA = new Value @mIStream, valA
+
+    [opcode, valB, valA]
 
   opc:  () -> @mOpc
   valA: () -> @mValA

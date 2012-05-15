@@ -4,6 +4,9 @@
 #
 # Define generic hardware device interface.
 #
+
+Module = {}
+
 class Device
   constructor: (name="?", cpu) ->
     @mName = name
@@ -24,7 +27,7 @@ class Device
   #
   # Handles a HW interrupt from the CPU
   #
-  hwInterrupt: (n) -> undefined
+  hwInterrupt: () -> undefined
 
   #
   # Sends an interrupt to the CPU
@@ -44,3 +47,5 @@ class Device
     @mCpu.regC ver
     @mCpu.regX (mfgr) & 0xffff
     @mCpu.regY (mfgr >> 16) & 0xffff
+
+exports.Device = Device

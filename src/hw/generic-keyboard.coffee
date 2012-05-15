@@ -5,13 +5,14 @@
 # Generic Keyboard
 # Based on the spec at: http://dcpu.com/highnerd/rc_1/keyboard.txt
 #
+Module = {}
 
 device = require "./device"
 
 Device = device.Device
 
 class GenericKeyboard extends Device
-  constructor: (cpu)
+  constructor: (cpu) ->
     super "Generic Keyboard", cpu
     @mKeyBuffer = []
 
@@ -19,7 +20,7 @@ class GenericKeyboard extends Device
   mfgr: () -> 0x0
   ver:  () -> 0x1
 
-  hwInterrupt: (n) -> switch n
+  hwInterrupt: () -> switch @mCpu.regA()
     when 0 then @clearBuffer()
     when 1 then @nextKey()
     when 2 then @isPressed()
@@ -42,3 +43,4 @@ class GenericKeyboard extends Device
   setInterrupts:  () -> 
     @mIrqMsg = @mCpu.regB()
 
+exports.GenericKeyboard = GenericKeyboard

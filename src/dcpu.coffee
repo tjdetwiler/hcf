@@ -9,17 +9,24 @@
 #
 Module = {}
 
-decode = require './dcpu-decode'
+decode            = require './dcpu-decode'
+lem1802           = require './hw/lem1802'
+generic_clock     = require './hw/generic-clock'
+generic_keyboard  = require './hw/generic-keyboard'
 
 Value = decode.Value
 Instr = decode.Instr
 IStream = decode.IStream
+Lem1802 = lem1802.Lem1802
+GenericClock = generic_clock.GenericClock
+GenericKeyboard = generic_keyboard.GenericKeyboard
 
 class Dcpu16
   constructor: () ->
     cpu = @
     @mCycles = 0
-    @mSkipNext = false
+    @mCCFail = false
+    @mIntQueueOn = false
     @mMemory = (0 for x in [0..0xffff])
     @mIStream = new IStream @mMemory
     @mRegStorage = (0 for x in [0..0xf])
@@ -29,7 +36,7 @@ class Dcpu16
       @_regGen(Value.REG_X), @_regGen(Value.REG_Y), @_regGen(Value.REG_Z),
       @_regGen(Value.REG_I), @_regGen(Value.REG_J),
       (v) -> cpu.mIStream.index(v), 
-      @_regGen(Value.REG_SP), @_regGen(Value.REG_O)
+      @_regGen(Value.REG_SP), @_regGen(Value.REG_EX), @_regGen(Value.REG_IA)
     ]
     @mExecutors = []
     @mAdvExecutors = []
@@ -42,6 +49,10 @@ class Dcpu16
         name = "_exec_#{op.id.toLowerCase()}"
         @mAdvExecutors[op.op] = name
 
+    @mDevices = []
+    @mDevices.push new Lem1802 @
+    @mDevices.push new GenericClock @
+    @mDevices.push new GenericKeyboard @
   #
   # Event setter functions.
   #
@@ -71,8 +82,9 @@ class Dcpu16
   regI:     (v)     -> @reg Value.REG_I, v
   regJ:     (v)     -> @reg Value.REG_J, v
   regSP:    (v)     -> @reg Value.REG_SP, v
-  regO:     (v)     -> @reg Value.REG_O, v
+  regEX:    (v)     -> @reg Value.REG_EX, v
   regPC:    (v)     -> @reg Value.REG_PC, v
+  regIA:    (v)     -> @reg Value.REG_IA, v
   readReg:  (n)     -> @reg n
   writeReg: (n,val) -> @reg n, val
 
@@ -119,8 +131,8 @@ class Dcpu16
   #
   step: () ->
     i = new Instr @mIStream
-    if @mSkipNext
-      @mSkipNext = false
+    if @mCCFail
+      @mCCFail = false
       if @mCondFail? then @mCondFail i
       return @step()
 
@@ -135,10 +147,43 @@ class Dcpu16
   stop: () -> @mRun = false
 
   exec: (opc, valA, valB) ->
+    i = Instr.BASIC_OPS[opc]
+    if not i? then return
+
+    #
+    # If we've failed a conditional instruction, we should keep skipping
+    # instructions as long as they are conditionals. This is indicated
+    # by the "cond" property of the opcode object.
+    #
+    if @mCCFail
+      @mCCFail = i.cond
+      return
+
+    #
+    # Lookup and call the instructions executor.
+    #
     f = @mExecutors[opc]
     if not f?
       return console.log "Unable to execute OPC #{opc}"
     this[f] valA, valB
+
+  interrupt: (n) ->
+    ia = @regIA()
+
+    # Check IA
+    if ia == 0
+      return
+
+    # Check if interrupt queueing enabled
+    if @mIntQueuOn
+      # TODO: put interrupt in queue
+      return
+
+    @mIntQueueOn = true
+    @push @regPC()
+    @push @regA()
+    @regPC @regIA()
+    @regA n
 
   #
   # Generates a register access function
@@ -172,25 +217,25 @@ class Dcpu16
   _exec_add: (a,b) ->
     v = a.get(@) + b.get(@)
     if v > 0xffff
-      @regO 1
+      @regEX 1
       v -= 0xffff
     else
-      @regO 0
+      @regEX 0
     a.set @,v
 
   _exec_sub: (a,b) ->
     v = a.get(@) - b.get(@)
     if v < 0
-      @regO 0xffff
+      @regEX 0xffff
       v += 0xffff
     else
-      @regO 0
+      @regEX 0
     a.set @,v
 
   _exec_mul: (a,b) ->
     v = a.get(@) * b.get(@)
     a.set @, v & 0xffff
-    @regO ((v>>16) & 0xffff)
+    @regEX ((v>>16) & 0xffff)
 
   _exec_div: (a,b) ->
     if b.get(@) is 0
@@ -198,7 +243,7 @@ class Dcpu16
     else 
       v = a.get(@) / b.get(@)
       a.set @, v & 0xffff
-      @regO (((a.get() << 16)/b.get)&0xffff)
+      @regEX (((a.get() << 16)/b.get)&0xffff)
 
   _exec_mod: (a,b) ->
     if b.get(@) is 0
@@ -217,65 +262,90 @@ class Dcpu16
 
   _exec_shr: (a,b) ->
     a.set @, a.get(@) >> b.get(@)
-    @regO (((a.get(@) << 16)>>b.get(@))&0xffff)
-
+    @regEX (((a.get(@) << 16)>>b.get(@))&0xffff)
 
   _exec_shl: (a,b) ->
     a.set @, a.get(@) << b.get(@)
-    @regO (((a.get(@)<<b.get(@))>>16)&0xffff)
-
-  _exec_ife: (a,b) ->
-    if a.get(@) == b.get(@)
-      ""
-    else
-      @mSkipNext=true
-
-  _exec_ifn: (a,b) ->
-    if a.get(@) != b.get(@)
-      ""
-    else
-      @mSkipNext=true
-
-  _exec_ifg: (a,b) ->
-    if a.get(@) > b.get(@)
-      ""
-    else
-      @mSkipNext=true
+    @regEX (((a.get(@)<<b.get(@))>>16)&0xffff)
 
   _exec_ifb: (a,b) ->
-    if (a.get(@) & b.get(@)) != 0
-      ""
-    else
-      @mSkipNext=true
+    if (a.get(@) & b.get(@)) == 0
+      @mCCFail=true
 
-  #
-  # TODO: These
-  #
+  _exec_ifc: (a,b) ->
+    if (a.get(@) & b.get(@)) != 0
+      @mCCFail=true
+
+  _exec_ife: (a,b) ->
+    if a.get(@) != b.get(@)
+      @mCCFail=true
+
+  _exec_ifn: (a,b) ->
+    if a.get(@) == b.get(@)
+      @mCCFail=true
+
+  _exec_ifg: (a,b) ->
+    if a.get(@) <= b.get(@)
+      @mCCFail=true
+
+  _exec_ifl: (a,b) ->
+    if a.get(@) >= b.get(@)
+      @mCCFail=true
+
+  _exec_ifa: (a,b) -> undefined
+  _exec_ifu: (a,b) -> undefined
   _exec_mli: (a,b) -> undefined
   _exec_ash: (a,b) -> undefined
   _exec_dvi: (a,b) -> undefined
   _exec_mdi: (a,b) -> undefined
-  _exec_ifc: (a,b) -> undefined
-  _exec_ifa: (a,b) -> undefined
-  _exec_ifl: (a,b) -> undefined
-  _exec_ifu: (a,b) -> undefined
   _exec_adf: (a,b) -> undefined
   _exec_sbx: (a,b) -> undefined
-  _exec_sti: (a,b) -> undefined
-  _exec_std: (a,b) -> undefined
+
+  _exec_sti: (a,b) ->
+    b.set @, a.get @
+    @regJ @regJ() + 1
+    @regI @regI() + 1
+
+  _exec_std: (a,b) ->
+    b.set @, a.get @
+    @regJ @regJ() - 1
+    @regI @regI() - 1
 
   _exec_jsr: (a)   ->
     @push @regPC()
     @regPC a.get()
 
-  _exec_int: (a)   -> undefined
-  _exec_iag: (a)   -> undefined
-  _exec_ias: (a)   -> undefined
-  _exec_rfi: (a)   -> undefined
-  _exec_iaq: (a)   -> undefined
-  _exec_hwn: (a)   -> undefined
-  _exec_hwq: (a)   -> undefined
-  _exec_hwi: (a)   -> undefined
+  _exec_int: (a)   ->
+    n = a.get @
+    @interrupt n
+
+  _exec_iag: (a)   ->
+    a.set @, @regIA()
+
+  _exec_ias: (a)   ->
+    @regIA a.get @
+
+  _exec_rfi: (a)   ->
+    @mIntQueueOn = false
+    @regA @pop()
+    @regPC @pop()
+
+  _exec_iaq: (a)   ->
+    n = a.get @
+    @mIntQueueOn = (n != 0)
+
+  _exec_hwn: (a)   ->
+    a.set @, @mDevices.length
+
+  _exec_hwq: (a)   ->
+    i = a.get @
+    dev = @mDevices[i]
+    if dev? then dev.query()
+
+  _exec_hwi: (a)   ->
+    i = a.get @
+    dev = @mDevices[i]
+    if dev? then dev.hwInterrupt()
  
 
 exports.Dcpu16 = Dcpu16
