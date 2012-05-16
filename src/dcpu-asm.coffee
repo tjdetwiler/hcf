@@ -100,6 +100,13 @@ class Instruction
     stream.push instr
     v.emit stream for v in @mVals
 
+class Data
+  constructor: (asm, dat) ->
+    @mAsm = asm
+    @mData = dat
+
+  emit: (stream) -> stream.push @mData
+
 class Assembler
   constructor: () ->
     @mText = ""
@@ -188,14 +195,21 @@ class Assembler
     #   > Instruction
     #   > Directive?
     #
+    toks = line.match /[^ \t]+/g
     if line[0] is ":"
       # Label
-      toks = line.match /[^ \t]+/g
       @label toks[0][1..], @mPc
       # Process rest of line
       return @processLine (toks[1..].join " ")
     else if line[0] is ";"
       # Comment
+      return r = 
+        result: "success"
+    else if toks[0] == "DAT"
+      n = parseInt toks[1]
+      # TODO: Multiple words?
+      # TODO: Verify n
+      @mInstrs.push(new Data @, n)
       return r = 
         result: "success"
     else if match = line.match basic_regex
