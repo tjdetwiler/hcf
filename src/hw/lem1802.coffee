@@ -15,7 +15,7 @@ class Lem1802 extends Device
     super "LEM1802", cpu
     @mCanvas = canvas
     @mCtx = if canvas? then canvas.getContext '2d'
-    @mScale = 1
+    @mScale = 4
     @mScreenAddr = 0
     @mFontAddr = 0
     @mPaletteAddr = 0
@@ -67,42 +67,52 @@ class Lem1802 extends Device
 
   setBorderColor:   () -> undefined
 
-  readFontRam:    (i) -> Lem1802.DFL_FONT[i]
-  readPaletteRam: (i) -> Lem1802.DFL_PALETTE[i]
+  readFontRam:    (i) ->
+    Lem1802.DFL_FONT[i]
+
+  readPaletteRam: (i) ->
+    word = Lem1802.DFL_PALETTE[i]
+    b = word & 0xf
+    g = (word >> 4) & 0xf
+    r = (word >> 8) & 0xf
+    {r:r, g:g, b:b}
+
+  rgbString: (c) ->
+    "rgb(#{c.r*16}, #{c.g*16}, #{c.b*16})"
 
   getChar: (c) ->
-    ascii = c.charCodeAt 0
-    [@readFontRam ascii, @readFontRam ascii+1]
+    #[@readFontRam(c*2+1), @readFontRam(c*2)]
+    [@readFontRam(c*2), @readFontRam(c*2+1)]
 
   #
   # x - X coordinate to place character
   # y - Y coordinate to place character
   #
   drawChar: (x,y,c) ->
-    console.log "Drawing char"
     # Can't draw without a context
     if not @mCtx? then return
+    bg = (c >> 8) & 0xf
+    fg = (c >> 12) & 0xf
+    c = c & 0x7f
     x = x*4
     y = y*8
 
     c = @getChar c
+    @mCtx.fillStyle = @rgbString @readPaletteRam bg
+    @mCtx.fillRect(x*@mScale, y*@mScale, 4*@mScale, 8*@mScale)
+    @mCtx.fillStyle = @rgbString @readPaletteRam fg
     for i in [31..0]
-      word = Math.floor 1/16
+      word = Math.floor i/16
       bit  = i % 16
       if c[1-word] & (1<<bit)
         x_ = x + 3 - Math.floor i/8
         y_ = y + (i%8)
-        #TODO: Pull in FG color
-        @mCtx.fillStyle = "rgb(200,0,0)"
         @mCtx.fillRect(x_*@mScale,y_*@mScale,@mScale,@mScale)
-    #TODO: Pull in BG color
-    @mCtx.fillStyle = "rgba(0, 0, 200, 0.5)"
-    @mCtx.fillRect(x*@mScale, y*@mScale, 4*@mScale, 8*@mScale)
 
   clear: () ->
     if not @mCtx? then return
-    @mCtx.fillStyle = "rgb(200,0,0)"
-    @mCtx.fillRect(0, 0, 150, 150)
+    @mCtx.fillStyle = @rgbString @readPaletteRam 0xf
+    @mCtx.fillRect(0, 0, 128 * @mScale, 96 * @mScale)
 
   #
   # Memory Mapped Callbacks
@@ -113,7 +123,7 @@ class Lem1802 extends Device
       console.log "Screen CB"
       x = a % 32
       y = Math.floor a/32
-      lem.drawChar x,y,'f'
+      lem.drawChar x,y,v
 
   _fontCB:      () ->
     lem = this
@@ -261,22 +271,22 @@ class Lem1802 extends Device
     0x0,0x0   #127: 'DEL'
   ]
   @DFL_PALETTE: [
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
-    0x0,
+    0x0fff,   #white
+    0x0ff0,   #yellow
+    0x0f0f,   #fuchsia
+    0x0f00,   #red
+    0x0ccc,   #silver
+    0x0888,   #gray
+    0x0880,   #olive
+    0x0808,   #purple
+    0x0800,   #maroon
+    0x00ff,   #aqua
+    0x00f0,   #lime
+    0x0088,   #teal
+    0x0080,   #green
+    0x000f,   #blue
+    0x0008,   #navy
+    0x0000    #black
   ]
 
 exports.Lem1802 = Lem1802

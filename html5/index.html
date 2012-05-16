@@ -121,8 +121,9 @@
         set b, 0x1000
         hwi 0
 
-        set i, 0
-:loop   set [0x1000+i], 0
+        set c, 102
+        bor c, 0x0f00
+:loop   set [0x1000+i], c
         add i, 1
         ifn i, 0x1000
         set pc, loop
@@ -132,7 +133,7 @@
       <p id="asm-error"></p>
       </form>
     </div>
-    <canvas id="framebuffer" width="150" height="150"></canvas>
+    <canvas id="framebuffer" width="512" height="384"></canvas>
 </div>
 
 <script>
