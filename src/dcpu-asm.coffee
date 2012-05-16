@@ -42,13 +42,15 @@ class LitValue
     @mLit = lit
     if @mLit > 0x1f then @mAsm.incPc()
   emit: (stream) ->
-    if @mLit > 0x1f
+    if @mLit > 0x1e
       stream.push @mLit
   encode: () ->
-    if @mLit > 0x1f
+    if @mLit == 0xffff
+      0x20
+    else if @mLit > 0x1f
       0x1f
     else
-      @mLit + 0x20
+      @mLit + 0x21
 
 class SpecialValue
   constructor: (asm,enc) ->

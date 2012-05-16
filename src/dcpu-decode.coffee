@@ -85,7 +85,10 @@ class Value
       @mNext = @mIStream.nextWord()
       @mValue = @mNext
     else if 0x20 <= enc <= 0x3f
-      @mValue = enc - 0x20
+      if enc
+        @mValue = enc - 0x21
+      else
+        @mValue = 0xffff
 
   get: (cpu) ->
     if @isMem and @isReg and @mNext?
