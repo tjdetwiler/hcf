@@ -30,13 +30,25 @@ class GenericClock extends Device
 
   setRate:        () ->
     @mRate = @mCpu.regB()
+    if @mRate
+      @mRate = Math.floor 60/@mRate
+      @mRate = 1000/@mRate
+      console.log "Timer ticking every #{@mRate}ms"
+      setTimeout @tick(), @mRate
 
   getTicks:       () ->
-    elapsed = @mCount - @mLastCount
-    @mLastCount = @mCount
-    @mCpu.regC elapsed
+    @mCpu.regC @mCount
+    @mCount = 0
 
   setInterrupts:  () ->
     @mIrqMsg = @mCpu.regB()
 
+  tick: () ->
+    clock = this
+    () ->
+      console.log "ticking"
+      if clock.mIrqMsg then clock.interrupt clock.mIrqMsg
+      clock.mCount++
+      if clock.mRate then setTimeout clock.tick(), clock.mRate
+      
 exports.GenericClock = GenericClock

@@ -49,18 +49,37 @@
     };
 
     GenericClock.prototype.setRate = function() {
-      return this.mRate = this.mCpu.regB();
+      this.mRate = this.mCpu.regB();
+      if (this.mRate) {
+        this.mRate = Math.floor(60 / this.mRate);
+        this.mRate = 1000 / this.mRate;
+        console.log("Timer ticking every " + this.mRate + "ms");
+        return setTimeout(this.tick(), this.mRate);
+      }
     };
 
     GenericClock.prototype.getTicks = function() {
-      var elapsed;
-      elapsed = this.mCount - this.mLastCount;
-      this.mLastCount = this.mCount;
-      return this.mCpu.regC(elapsed);
+      this.mCpu.regC(this.mCount);
+      return this.mCount = 0;
     };
 
     GenericClock.prototype.setInterrupts = function() {
       return this.mIrqMsg = this.mCpu.regB();
+    };
+
+    GenericClock.prototype.tick = function() {
+      var clock;
+      clock = this;
+      return function() {
+        console.log("ticking");
+        if (clock.mIrqMsg) {
+          clock.interrupt(clock.mIrqMsg);
+        }
+        clock.mCount++;
+        if (clock.mRate) {
+          return setTimeout(clock.tick(), clock.mRate);
+        }
+      };
     };
 
     return GenericClock;

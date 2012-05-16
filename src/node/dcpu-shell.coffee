@@ -7,13 +7,14 @@
 # Provide an interface to interact with a DCPU-16 model.
 #
 
-fs        = require 'fs'
-cmd       = require './cmd'
-dcpu      = require '../dcpu'
-asm       = require '../dcpu-asm'
-decode    = require '../dcpu-decode'
-dasm      = require '../dcpu-disasm'
-lem1802   = require '../hw/lem1802'
+fs              = require 'fs'
+cmd             = require './cmd'
+dcpu            = require '../dcpu'
+asm             = require '../dcpu-asm'
+decode          = require '../dcpu-decode'
+dasm            = require '../dcpu-disasm'
+lem1802         = require '../hw/lem1802'
+generic_clock   = require '../hw/generic-clock'
 
 IStream = decode.IStream
 
@@ -26,6 +27,7 @@ class Dcpu16Shell extends cmd.Cmd
     @asm = new asm.Assembler()
     @dcpu = new dcpu.Dcpu16()
     @dcpu.addDevice new lem1802.Lem1802 @dcpu
+    @dcpu.addDevice new generic_clock.GenericClock @dcpu
     @dcpu.onPreExec (i) ->
       if inst.mTrace
         console.log dasm.Disasm.ppInstr i
