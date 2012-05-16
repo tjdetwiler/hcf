@@ -6,7 +6,6 @@ decode    = require '../dcpu-decode'
 asm       = require '../dcpu-asm'
 lem1802   = require '../hw/lem1802'
 cpu = new dcpu.Dcpu16()
-
 onExec = (i) ->
   disasm = dasm.Disasm.ppInstr i
   $(".instruction").removeClass "current-instruction"
@@ -58,6 +57,12 @@ assemble = (text) ->
   cpu.regPC 0
   updateRegs()
 
+run = () ->
+  setTimeout((() ->
+    cpu.step()
+    run()
+    )(), 1)
+
 $ () ->
   regs = [
     ($ "#RegA"),
@@ -91,6 +96,8 @@ $ () ->
     base = $("#membase").val()
     base = 0 if not base
     dumpMemory parseInt base
+  $("#btnRun").click () ->
+    run()
 
   canvas = $("#framebuffer")[0]
   console.log canvas

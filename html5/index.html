@@ -112,6 +112,8 @@
       </tbody>
       </table>
     <button id='btnStep' class="btn">Step</button>
+    <button id='btnRun' class='btn'>Run</button>
+    <button id='btnStop' class='btn'>Stop</button>
     <button id='btnAssemble' class='btn'>Assemble</button>
     </div>
     <div class="span5">
@@ -121,13 +123,15 @@
         set b, 0x1000
         hwi 0
 
-        set c, 102
+        ; c is the character to draw
+        set c, 0
+        ; fg = white, bg = black
         bor c, 0x0f00
 :loop   set [0x1000+i], c
         add i, 1
-        ifn i, 0x1000
+        add c, 1
+        ifn i, 128
         set pc, loop
-
 :crash  set pc, crash
 </textarea>
       <p id="asm-error"></p>
