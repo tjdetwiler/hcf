@@ -60,6 +60,8 @@ class LitValue
   constructor: (asm,lit) ->
     @mAsm = asm
     @mLit = lit
+
+    if (n = parseInt lit) then @mLit = n
     if @mLit > 0x1f or @isLabel() then @mAsm.incPc()
 
   isLabel: () -> isNaN @mLit
@@ -191,7 +193,8 @@ class Assembler
         message: "Unmatched value #{val}"
 
   processLine: (line) ->
-    line = line.trim().toUpperCase()
+    # Take everything before the first semicolon, trim and upper-case
+    line = line.split(";")[0].toUpperCase().trim()
     if line is ""
       return r =
         result: "success"
@@ -208,6 +211,7 @@ class Assembler
       (
         [^,]+         #ValA
     )///
+    str_regex = ///"([^"]*)"///
     #
     # Either:
     #   > Label
@@ -222,15 +226,19 @@ class Assembler
       return @processLine (toks[1..].join " ")
     else if line[0] is ";"
       # Comment
-      return r = 
-        result: "success"
+      return {result: "success"}
     else if toks[0] == "DAT"
-      n = parseInt toks[1]
-      # TODO: Multiple words?
-      # TODO: Verify n
-      @mInstrs.push(new Data @, n)
-      return r = 
-        result: "success"
+      toks = (toks[1..].join " ").split ","
+      for tok in toks
+        tok = tok.trim()
+        if match = tok.match str_regex
+          for c in match[1]
+            @mInstrs.push(new Data @, c.charCodeAt(0))
+        else if (n = parseInt tok)?
+          @mInstrs.push(new Data @, n)
+        else
+          console.log "Bad Data String: '#{tok}'"
+      return {result: "success"}
     else if match = line.match basic_regex
       # Basic Opcode
       [opc, valA, valB] = match[1..3]

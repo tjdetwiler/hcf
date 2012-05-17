@@ -77,8 +77,12 @@
     LitValue.name = 'LitValue';
 
     function LitValue(asm, lit) {
+      var n;
       this.mAsm = asm;
       this.mLit = lit;
+      if ((n = parseInt(lit))) {
+        this.mLit = n;
+      }
       if (this.mLit > 0x1f || this.isLabel()) {
         this.mAsm.incPc();
       }
@@ -314,8 +318,8 @@
     };
 
     Assembler.prototype.processLine = function(line) {
-      var adv_regex, basic_regex, enc, match, n, opc, r, toks, valA, valB, _ref, _ref1;
-      line = line.trim().toUpperCase();
+      var adv_regex, basic_regex, c, enc, match, n, opc, r, str_regex, tok, toks, valA, valB, _i, _j, _len, _len1, _ref, _ref1, _ref2;
+      line = line.split(";")[0].toUpperCase().trim();
       if (line === "") {
         return r = {
           result: "success"
@@ -323,22 +327,37 @@
       }
       basic_regex = /(\w+)\s+([^,]+)\s*,\s*([^,]+)/;
       adv_regex = /(\w+)\s+([^,]+)/;
+      str_regex = /"([^"]*)"/;
       toks = line.match(/[^ \t]+/g);
       if (line[0] === ":") {
         this.label(toks[0].slice(1), this.mPc);
         return this.processLine(toks.slice(1).join(" "));
       } else if (line[0] === ";") {
-        return r = {
+        return {
           result: "success"
         };
       } else if (toks[0] === "DAT") {
-        n = parseInt(toks[1]);
-        this.mInstrs.push(new Data(this, n));
-        return r = {
+        toks = (toks.slice(1).join(" ")).split(",");
+        for (_i = 0, _len = toks.length; _i < _len; _i++) {
+          tok = toks[_i];
+          tok = tok.trim();
+          if (match = tok.match(str_regex)) {
+            _ref = match[1];
+            for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+              c = _ref[_j];
+              this.mInstrs.push(new Data(this, c.charCodeAt(0)));
+            }
+          } else if ((n = parseInt(tok)) != null) {
+            this.mInstrs.push(new Data(this, n));
+          } else {
+            console.log("Bad Data String: '" + tok + "'");
+          }
+        }
+        return {
           result: "success"
         };
       } else if (match = line.match(basic_regex)) {
-        _ref = match.slice(1, 4), opc = _ref[0], valA = _ref[1], valB = _ref[2];
+        _ref1 = match.slice(1, 4), opc = _ref1[0], valA = _ref1[1], valB = _ref1[2];
         if (!(this.mOpcDict[opc] != null)) {
           return r = {
             result: "fail",
@@ -360,7 +379,7 @@
           result: "success"
         };
       } else if (match = line.match(adv_regex)) {
-        _ref1 = match.slice(1, 3), opc = _ref1[0], valA = _ref1[1];
+        _ref2 = match.slice(1, 3), opc = _ref2[0], valA = _ref2[1];
         if (!(this.mOpcDict[opc] != null)) {
           return r = {
             result: "fail",
