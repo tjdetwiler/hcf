@@ -12,6 +12,9 @@ dasm = require './dcpu-disasm'
 
 Instr = decode.Instr
 
+#
+# Class to handle register values.
+#
 class RegValue
   constructor: (asm, reg) ->
     @mAsm = asm
@@ -20,14 +23,25 @@ class RegValue
   encode: () -> @mReg
 
 class MemValue
+  #
+  # Class to handle all memory values:
+  # [register]
+  # [register+next word]
+  # [next word]
+  #
+  # To specify a register, pass the Register ID to the ctor.
+  # To specify a literal value (next word), pass a LitValue
+  # object to the ctor.
+  #
   constructor: (asm, reg=undefined, lit=undefined) ->
     @mAsm = asm
     @mReg = reg
     @mLit = lit
-    if @mLit? and @mLit > 0x1f then @mAsm.incPc()
-  emit: (stream) -> if @mLit? then stream.push @mLit
+  emit: (stream) ->
+    if not @mLit? then return
+    if @mLit? then stream.push @mLit.value()
   encode: () ->
-    if @mLit? and @mReg?
+    if @mLit? and @mReg? and not @mLit.isLabel()
       @mReg + 0x10
     else if @mReg?
       @mReg + 0x8
@@ -36,48 +50,40 @@ class MemValue
     else
       console.log "ERROR: MemValue with corrupted state."
 
+#
+# Class to handle literal values.
+#
+# Pass a numeric literal, or a string defining a label to the
+# ctor.
+#
 class LitValue
   constructor: (asm,lit) ->
     @mAsm = asm
     @mLit = lit
-    if @mLit > 0x1f then @mAsm.incPc()
+    if @mLit > 0x1f or @isLabel() then @mAsm.incPc()
+
+  isLabel: () -> isNaN @mLit
+
+  value: () ->
+    if @isLabel()
+      addr = @mAsm.lookup @mLit
+      if not addr?
+        console.log "Undefined label '#{@mLit}'"
+      return addr
+    else
+      return @mLit
+
   emit: (stream) ->
-    if @mLit > 0x1e
-      stream.push @mLit
+    if @mLit > 0x1e or @isLabel()
+      stream.push @value()
+
   encode: () ->
     if @mLit == 0xffff
       0x20
-    else if @mLit > 0x1f
+    else if @mLit > 0x1f or @isLabel()
       0x1f
     else
       @mLit + 0x21
-
-class SpecialValue
-  constructor: (asm,enc) ->
-    @mEnc = enc
-  emit: () -> undefined
-  encode: () -> @mEnc
-
-class LabelValue
-  constructor: (asm, lbl) ->
-    @mAsm = asm
-    @mLbl = lbl
-    @mAsm.incPc()
-  resolve: () ->
-    addr = @mAsm.lookup @mLbl
-    if not addr?
-      console.log "Undefined label '#{@mLbl}'"
-    addr
-  emit: (stream) ->
-    addr = @resolve()
-    if not addr?
-      return false
-    stream.push addr
-  encode: () ->
-    addr = @resolve()
-    if not addr?
-      return false
-    return 0x1f
 
 class RawValue
   constructor: (asm, raw) ->
@@ -142,30 +148,33 @@ class Assembler
       # See if its a basic or special register. if not, assume label
       #
       switch match[1]
-        when "POP"    then success new SpecialValue @, 0x18
-        when "PEEK"   then success new SpecialValue @, 0x19
-        when "PUSH"   then success new SpecialValue @, 0x1a
-        when "SP"     then success new SpecialValue @, 0x1b
-        when "PC"     then success new SpecialValue @, 0x1c
-        when "O"      then success new SpecialValue @, 0x1d
+        when "POP"    then success new RawValue @, 0x18
+        when "PEEK"   then success new RawValue @, 0x19
+        when "PUSH"   then success new RawValue @, 0x1a
+        when "SP"     then success new RawValue @, 0x1b
+        when "PC"     then success new RawValue @, 0x1c
+        when "O"      then success new RawValue @, 0x1d
         else
           regid = dasm.Disasm.REG_DISASM.indexOf match[1]
           if regid == -1
-            return success new LabelValue @, match[1]
+            return success new LitValue(@, match[1])
           else
             return success new RegValue @, regid
     else if match = val.match ireg_regex
       regid = dasm.Disasm.REG_DISASM.indexOf match[1]
-      return success (new MemValue @, regid, undefined)
+      if regid == -1
+        return success new MemValue(@, undefined, new LitValue(@, match[1]))
+      else
+        return success new MemValue(@, regid, undefined)
     else if match = val.match lit_regex
       return success new LitValue @, parseInt match[1]
     else if match = val.match ilit_regex
       n = parseInt match[1]
-      return success (new MemValue @, undefined, n)
+      return success (new MemValue @, undefined, new LitValue(@, n))
     else if match = val.match arr_regex
       n = parseInt match[1]
       r = dasm.Disasm.REG_DISASM.indexOf match[2]
-      return success new MemValue @, r, n
+      return success new MemValue @, r, new LitValue(@, n)
     else
       return r =
         result: "fail"
@@ -249,8 +258,9 @@ class Assembler
         source: line
         message: "Syntax Error"
 
-  emit: (stream) -> i.emit stream for i in @mInstrs
-
+  emit: (stream) ->
+    for i in @mInstrs
+      i.emit stream 
   assemble: (text) ->
     prog = []
     lines = text.split "\n"
