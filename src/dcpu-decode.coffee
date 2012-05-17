@@ -15,7 +15,8 @@ class IStream
     @mDecoded = []
     @mIndex = base
 
-  nextWord: () -> @mStream[@mIndex++]
+  nextWord: () ->
+    @mStream[@mIndex++]
   index: (v) -> if v? then @mIndex=v else @mIndex
   setPC: (v) -> index v
   getPC: ( ) -> index()
@@ -202,6 +203,7 @@ class Instr
     @mIStream = stream
     @mAddr = @mIStream.index()
     [@mOpc, @mValA, @mValB] = @decode @mIStream.nextWord()
+    @mParams = @_getParams()
 
   decode: (instr) ->
     opcode = instr & @OPCODE_MASK()
@@ -216,10 +218,21 @@ class Instr
 
     [opcode, valB, valA]
 
+
   opc:  () -> @mOpc
   valA: () -> @mValA
   valB: () -> @mValB
   addr: () -> @mAddr
+  cond: () -> @mParams.cond
+  cost: () -> @mParams.cost
+  
+
+  _getParams: () ->
+    if @mOpc
+      Instr.BASIC_OPS[@mOpc]
+    else
+      Instr.ADV_OPS[@mValA.raw()]
+
 
   #
   # Constants... there's probably (hopefully?) a better way to do this.

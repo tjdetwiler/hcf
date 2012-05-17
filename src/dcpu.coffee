@@ -11,6 +11,9 @@ Module = {}
 
 decode            = require './dcpu-decode'
 
+#TEMP:
+Disasm            = require('./dcpu-disasm').Disasm
+
 Value = decode.Value
 Instr = decode.Instr
 IStream = decode.IStream
@@ -156,34 +159,26 @@ class Dcpu16
   #
   step: () ->
     i = new Instr @mIStream
-    if @mCCFail
-      @mCCFail = false
-      if @mCondFail? then @mCondFail i
-      return @step()
 
     if @mPreExec? then @mPreExec i
-    @exec i.opc(), i.valA(), i.valB()
+    @exec i
     if @mPostExec? then @mPostExec i
-
-  run: () ->
-    @mRun = true
-    @step() while @mRun
-
-  stop: () -> @mRun = false
-
-  exec: (opc, valA, valB) ->
-    i = Instr.BASIC_OPS[opc]
-    if not i? then return
-    @mCycles += i.cost
 
     #
     # If we've failed a conditional instruction, we should keep skipping
     # instructions as long as they are conditionals. This is indicated
     # by the "cond" property of the opcode object.
     #
-    if @mCCFail
-      @mCCFail = i.cond
-      return
+    while @mCCFail
+      i = new Instr @mIStream
+      @mCCFail = i.cond()
+      if @mCondFail? then @mCondFail i
+
+  exec: (i) ->
+    opc = i.opc()
+    valA = i.valA()
+    valB = i.valB()
+    @mCycles += i.cost()
 
     #
     # Lookup and call the instructions executor.

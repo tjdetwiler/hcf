@@ -386,6 +386,7 @@
       this.mIStream = stream;
       this.mAddr = this.mIStream.index();
       _ref = this.decode(this.mIStream.nextWord()), this.mOpc = _ref[0], this.mValA = _ref[1], this.mValB = _ref[2];
+      this.mParams = this._getParams();
     }
 
     Instr.prototype.decode = function(instr) {
@@ -416,6 +417,22 @@
 
     Instr.prototype.addr = function() {
       return this.mAddr;
+    };
+
+    Instr.prototype.cond = function() {
+      return this.mParams.cond;
+    };
+
+    Instr.prototype.cost = function() {
+      return this.mParams.cost;
+    };
+
+    Instr.prototype._getParams = function() {
+      if (this.mOpc) {
+        return Instr.BASIC_OPS[this.mOpc];
+      } else {
+        return Instr.ADV_OPS[this.mValA.raw()];
+      }
     };
 
     Instr.prototype.OPCODE_MASK = function() {

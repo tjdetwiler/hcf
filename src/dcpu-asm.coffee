@@ -80,7 +80,7 @@ class LitValue
       stream.push @value()
 
   encode: () ->
-    if @mLit == 0xffff
+    if @mLit == -1
       0x20
     else if @mLit > 0x1f or @isLabel()
       0x1f

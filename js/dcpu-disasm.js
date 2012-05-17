@@ -84,8 +84,11 @@
         lit = val.mNext.toString(16);
         v = "0x" + lit;
       } else if ((0x20 <= enc && enc <= 0x3f)) {
-        lit = val.mValue.toString(16);
-        v = "0x" + ((enc - 0x20).toString(16));
+        v = enc - 0x21;
+        if (v < 0) {
+          v = 0xffff;
+        }
+        v = "0x" + (v.toString(16));
       }
       return v;
     };

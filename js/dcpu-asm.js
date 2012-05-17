@@ -112,7 +112,7 @@
     };
 
     LitValue.prototype.encode = function() {
-      if (this.mLit === 0xffff) {
+      if (this.mLit === -1) {
         return 0x20;
       } else if (this.mLit > 0x1f || this.isLabel()) {
         return 0x1f;
