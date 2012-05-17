@@ -264,6 +264,7 @@
       if (!(i != null)) {
         return;
       }
+      this.mCycles += i.cost;
       if (this.mCCFail) {
         this.mCCFail = i.cond;
         return;

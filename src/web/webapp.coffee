@@ -16,6 +16,7 @@ onExec = (i) ->
 cpu.onPostExec onExec
 
 regs = []
+timer = null
 
 updateRegs = () ->
   for v,i in regs
@@ -34,6 +35,10 @@ updateDisasm = () ->
     parent.append child
     addr = istream.index()
 
+updateCycles = () ->
+  cycles = "#{cpu.mCycles}"
+  $("#cycles").html cycles
+
 dumpMemory = (base) ->
   body = $ "#memdump-body"
   body.empty()
@@ -50,7 +55,6 @@ dumpMemory = (base) ->
 assemble = (text) ->
   state = new asm.Assembler().assemble(text)
   if state.result isnt "success"
-    console.log state
     return $("#asm-error").html("Error: Line #{state.line}: #{state.message}")
   $("#asm-error").html("")
   cpu.loadBinary state.code
@@ -58,10 +62,14 @@ assemble = (text) ->
   updateRegs()
 
 run = () ->
-  setTimeout((() ->
-    cpu.step()
-    run()
-    )(), 1)
+  cb = () ->
+    for i in [0..20000]
+      cpu.step()
+    updateRegs()
+    updateCycles()
+  if timer then clearInterval timer
+  timer = setInterval cb, 50
+  
 
 $ () ->
   regs = [
@@ -81,7 +89,7 @@ $ () ->
     assemble window.editor.getValue()
     base = $("#membase").val()
     base = 0 if not base
-    dumpMemory parseInt base
+    #dumpMemory parseInt base
 
   updateRegs()
   updateDisasm()
@@ -98,9 +106,13 @@ $ () ->
     dumpMemory parseInt base
   $("#btnRun").click () ->
     run()
+  $("#btnStop").click () ->
+    if timer
+      clearInterval timer
+      timer = null
 
   canvas = $("#framebuffer")[0]
-  console.log canvas
   fb = new lem1802.Lem1802 cpu, canvas
   cpu.addDevice fb
+  updateCycles()
 

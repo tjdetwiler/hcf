@@ -143,7 +143,7 @@ class Instr
   #
   # Opcodes
   #
-  @BASIC_OPS =[ @OPC_ADV = {op: 0x00, id: "adv", cond: false},
+  @BASIC_OPS =[ @OPC_ADV = {op: 0x00, id: "adv", cost: 0, cond: false},
     @OPC_SET = {op: 0x01, id: "set", cost: 1, cond: false},
     @OPC_ADD = {op: 0x02, id: "add", cost: 2, cond: false},
     @OPC_SUB = {op: 0x03, id: "sub", cost: 2, cond: false},

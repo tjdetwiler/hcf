@@ -244,11 +244,11 @@
     Assembler.prototype.processValue = function(val) {
       var arr_regex, ilit_regex, ireg_regex, lit_regex, match, n, r, reg_regex, regid, success;
       val = val.trim();
-      reg_regex = /^([a-zA-Z_]+)$/;
-      ireg_regex = /^\[\s*([a-zA-Z]+|\d+)\s*\]$/;
-      lit_regex = /^(0[xX][0-9a-fA-F]+|\d+)$/;
-      ilit_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]$/;
-      arr_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\+\s*([A-Z]+)\s*\]$/;
+      reg_regex = /^([a-zA-Z_]+)/;
+      ireg_regex = /^\[\s*([a-zA-Z]+|\d+)\s*\]/;
+      lit_regex = /^(0[xX][0-9a-fA-F]+|\d+)/;
+      ilit_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]/;
+      arr_regex = /^\[\s*([0-9a-zA-Z]+)\s*\+\s*([0-9a-zA-Z]+)\s*\]/;
       success = function(val) {
         return {
           result: "success",
@@ -290,8 +290,20 @@
         n = parseInt(match[1]);
         return success(new MemValue(this, void 0, new LitValue(this, n)));
       } else if (match = val.match(arr_regex)) {
-        n = parseInt(match[1]);
-        r = dasm.Disasm.REG_DISASM.indexOf(match[2]);
+        if ((r = dasm.Disasm.REG_DISASM.indexOf(match[2])) !== -1) {
+          return success(new MemValue(this, r, new LitValue(this, match[1])));
+        }
+        if ((r = dasm.Disasm.REG_DISASM.indexOf(match[1])) !== -1) {
+          return success(new MemValue(this, r, new LitValue(this, match[2])));
+        } else {
+          console.log("match[1]: " + match[1]);
+          console.log("match[2]: " + match[2]);
+          (void 0).crash();
+          return {
+            result: "fail",
+            message: "Unmatched value " + val
+          };
+        }
         return success(new MemValue(this, r, new LitValue(this, n)));
       } else {
         return r = {

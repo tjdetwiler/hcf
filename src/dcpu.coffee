@@ -174,6 +174,7 @@ class Dcpu16
   exec: (opc, valA, valB) ->
     i = Instr.BASIC_OPS[opc]
     if not i? then return
+    @mCycles += i.cost
 
     #
     # If we've failed a conditional instruction, we should keep skipping
