@@ -265,11 +265,11 @@ class Dcpu16
 
   _exec_div: (a,b) ->
     if b.get(@) is 0
-      a.set 0
+      a.set @, 0
     else 
       v = a.get(@) / b.get(@)
       a.set @, v & 0xffff
-      @regEX (((a.get() << 16)/b.get)&0xffff)
+      @regEX (((a.get(@) << 16)/b.get(@))&0xffff)
 
   _exec_mod: (a,b) ->
     if b.get(@) is 0

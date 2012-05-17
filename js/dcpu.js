@@ -352,11 +352,11 @@
     Dcpu16.prototype._exec_div = function(a, b) {
       var v;
       if (b.get(this) === 0) {
-        return a.set(0);
+        return a.set(this, 0);
       } else {
         v = a.get(this) / b.get(this);
         a.set(this, v & 0xffff);
-        return this.regEX(((a.get() << 16) / b.get) & 0xffff);
+        return this.regEX(((a.get(this) << 16) / b.get(this)) & 0xffff);
       }
     };
 
