@@ -207,6 +207,24 @@ class Dcpu16
     @regA n
 
   #
+  # Signed Operation Helpers
+  #
+  # signed -> return the value of 'v' (raw hex) in a signed integer
+  # signExtend -> turn 'v' (signed number) into raw hex.
+  #
+  signed: (v) ->
+    if v & 0x8000
+      -(0x10000 - v)
+    else
+      v
+
+  signExtend: (v) ->
+    if v < 0
+      (~(-v) + 1) & 0xffff
+    else
+      v
+
+  #
   # Generates a register access function
   #
   _regGen: (n) ->
@@ -224,6 +242,9 @@ class Dcpu16
   # instruction SET PC, 0x1000 will be handled by 
   #
   # _exec_adv is a special case for basic opcode '0'.
+  #
+  # BUG: These are written in DCPU 1.1 form, so a and b are swapped.
+  #      Passed values are the order they appear in assembly.
   #
   _exec_adv: (a,b) ->
     opc =  a.raw()
@@ -258,19 +279,43 @@ class Dcpu16
     a.set @, v & 0xffff
     @regEX ((v>>16) & 0xffff)
 
+  _exec_mli: (a,b) ->
+    v = (@signed a.get @) * (@signed b.get @)
+    v = @signExtend v
+    a.set @, v & 0xffff
+    @regEX ((v>>16) & 0xffff)
+    
+
   _exec_div: (a,b) ->
     if b.get(@) is 0
       a.set @, 0
+      @regEX 0
     else 
       v = a.get(@) / b.get(@)
       a.set @, v & 0xffff
       @regEX (((a.get(@) << 16)/b.get(@))&0xffff)
 
+  _exec_dvi: (a,b) ->
+    if b.get(@) is 0
+      a.set @, 0
+      @regEX 0
+    else 
+      v = (a.get @) / (@signed b.get @)
+      a.set @, v & 0xffff
+      @regEX ((a.get(@) << 16)/(@signed b.get @))&0xffff
+
   _exec_mod: (a,b) ->
     if b.get(@) is 0
-      a.set 0
+      a.set @, 0
     else
-      a.set a.get(@) % b.get(@)
+      a.set @, a.get(@) % b.get(@)
+
+  _exec_mdi: (a,b) ->
+    if b.get(@) is 0
+      a.set @, 0
+    else
+      a.set @, (@signed a.get @) % (@signed b.get @)
+    
 
   _exec_and: (a,b) ->
     a.set @, a.get(@) & b.get(@)
@@ -313,14 +358,17 @@ class Dcpu16
     if a.get(@) >= b.get(@)
       @mCCFail=true
 
-  _exec_ifa: (a,b) -> undefined
-  _exec_ifu: (a,b) -> undefined
-  _exec_mli: (a,b) -> undefined
-  _exec_ash: (a,b) -> undefined
-  _exec_dvi: (a,b) -> undefined
-  _exec_mdi: (a,b) -> undefined
-  _exec_adf: (a,b) -> undefined
+  _exec_ifa: (a,b) ->
+    if (@signed a.get @) <= (@signed b.get @)
+      @mCCFail=true
+
+  _exec_ifu: (a,b) ->
+    if (@signed a.get @) >= (@signed b.get @)
+      @mCCFaile=true
+
+  _exec_adx: (a,b) -> undefined
   _exec_sbx: (a,b) -> undefined
+  _exec_asr: (a,b) -> undefined
 
   _exec_sti: (a,b) ->
     b.set @, a.get @
