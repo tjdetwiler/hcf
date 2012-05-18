@@ -6,15 +6,12 @@ decode    = require '../dcpu-decode'
 asm       = require '../dcpu-asm'
 lem1802   = require '../hw/lem1802'
 cpu = new dcpu.Dcpu16()
-onExec = (i) ->
+cpu.onPostExec = (i) ->
   disasm = dasm.Disasm.ppInstr i
   $(".instruction").removeClass "current-instruction"
   id = "#pc#{i.addr()}"
   $(id).addClass "current-instruction"
   window.editor.setLineClass 1, "myclass", "myclass"
-
-cpu.onPostExec onExec
-
 regs = []
 timer = null
 
@@ -60,10 +57,13 @@ assemble = (text) ->
   cpu.loadBinary state.code
   cpu.regPC 0
   updateRegs()
+  base = $("#membase").val()
+  base = 0 if not base
+  dumpMemory parseInt base
 
 run = () ->
   cb = () ->
-    for i in [0..20000]
+    for i in [0..10001]
       cpu.step()
     updateRegs()
     updateCycles()
@@ -87,9 +87,6 @@ $ () ->
 
   btnAssembleClick = () ->
     assemble window.editor.getValue()
-    base = $("#membase").val()
-    base = 0 if not base
-    #dumpMemory parseInt base
 
   updateRegs()
   updateDisasm()
