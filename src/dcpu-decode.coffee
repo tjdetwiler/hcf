@@ -9,14 +9,17 @@
 #
 Module = {}
 
+#
+# Instruction Stream Class
+#
+# Handles fetching words from memory.
+#
 class IStream
   constructor: (instrs, base=0) ->
     @mStream = instrs
-    @mDecoded = []
     @mIndex = base
 
-  nextWord: () ->
-    @mStream[@mIndex++]
+  nextWord: () -> @mStream[@mIndex++]
   index: (v) -> if v? then @mIndex=v else @mIndex
   setPC: (v) -> index v
   getPC: ( ) -> index()

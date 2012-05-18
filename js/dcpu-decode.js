@@ -13,7 +13,6 @@
         base = 0;
       }
       this.mStream = instrs;
-      this.mDecoded = [];
       this.mIndex = base;
     }
 

@@ -10298,7 +10298,6 @@ require.define("/dcpu-decode.js", function (require, module, exports, __dirname,
         base = 0;
       }
       this.mStream = instrs;
-      this.mDecoded = [];
       this.mIndex = base;
     }
 
