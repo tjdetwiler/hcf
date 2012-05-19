@@ -1,0 +1,5 @@
+
+:start
+  SET A,0xffff
+  ADD A,0x20
+
