@@ -193,7 +193,9 @@ class Assembler
         message: "Unmatched value #{val}"
 
   processLine: (line) ->
-    # Take everything before the first semicolon, trim and upper-case
+    # input is the raw, untransformed string
+    # line is everything uppercase, before the first semicolon
+    input = line.trim()
     line = line.split(";")[0].toUpperCase().trim()
     if line is ""
       return r =
@@ -219,18 +221,21 @@ class Assembler
     #   > Directive?
     #
     toks = line.match /[^ \t]+/g
-    if line[0] is ":"
-      # Label
-      @label toks[0][1..], @mPc
+    if input[0] is ":"
+      toks = (input.match /[^ \t]+/g)
+      @label toks[0][1..].toUpperCase(), @mPc
       # Process rest of line
       return @processLine (toks[1..].join " ")
     else if line[0] is ";"
       # Comment
       return {result: "success"}
     else if toks[0] == "DAT"
-      toks = (toks[1..].join " ").split ","
+      console.log input
+      toks = input.match(/[^ \t]+/g)[1..].join(" ").split(",")
+      console.log "Array<#{toks}>"
       for tok in toks
         tok = tok.trim()
+        if tok[0] is ";" then break
         if match = tok.match str_regex
           for c in match[1]
             @mInstrs.push(new Data @, c.charCodeAt(0))
