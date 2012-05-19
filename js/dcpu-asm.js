@@ -339,9 +339,7 @@
           result: "success"
         };
       } else if (toks[0] === "DAT") {
-        console.log(input);
         toks = input.match(/[^ \t]+/g).slice(1).join(" ").split(",");
-        console.log("Array<" + toks + ">");
         for (_i = 0, _len = toks.length; _i < _len; _i++) {
           tok = toks[_i];
           tok = tok.trim();

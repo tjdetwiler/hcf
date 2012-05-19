@@ -9781,29 +9781,15 @@ require.define("/dcpu.js", function (require, module, exports, __dirname, __file
     Dcpu16.name = 'Dcpu16';
 
     function Dcpu16() {
-      var cpu, name, op, x, _i, _j, _len, _len1, _ref, _ref1;
+      var cpu, name, op, _i, _j, _len, _len1, _ref, _ref1;
       cpu = this;
-      this.mCycles = 0;
       this.mCCFail = false;
       this.mIntQueueOn = false;
-      this.mMemory = (function() {
-        var _i, _results;
-        _results = [];
-        for (x = _i = 0; 0 <= 0xffff ? _i <= 0xffff : _i >= 0xffff; x = 0 <= 0xffff ? ++_i : --_i) {
-          _results.push(0);
-        }
-        return _results;
-      })();
+      this.mCycles = 0;
+      this.mMemory = [];
+      this.mMappedRegions = [];
+      this.mRegStorage = [];
       this.mIStream = new IStream(this.mMemory);
-      this.mRegStorage = (function() {
-        var _i, _results;
-        _results = [];
-        for (x = _i = 0; 0 <= 0xf ? _i <= 0xf : _i >= 0xf; x = 0 <= 0xf ? ++_i : --_i) {
-          _results.push(0);
-        }
-        return _results;
-      })();
-      this.mRegStorage[Value.REG_SP] = 0xffff;
       this.mRegAccess = [
         this._regGen(Value.REG_A), this._regGen(Value.REG_B), this._regGen(Value.REG_C), this._regGen(Value.REG_X), this._regGen(Value.REG_Y), this._regGen(Value.REG_Z), this._regGen(Value.REG_I), this._regGen(Value.REG_J), function(v) {
           return cpu.mIStream.index(v);
@@ -9828,8 +9814,32 @@ require.define("/dcpu.js", function (require, module, exports, __dirname, __file
         }
       }
       this.mDevices = [];
-      this.mMappedRegions = [];
+      this.reset();
     }
+
+    Dcpu16.prototype.reset = function() {
+      var d, r, x, _i, _j, _k, _len, _len1, _ref, _ref1, _results;
+      this.mCCFail = false;
+      for (x = _i = 0; 0 <= 0xffff ? _i <= 0xffff : _i >= 0xffff; x = 0 <= 0xffff ? ++_i : --_i) {
+        this.mMemory[x] = 0;
+      }
+      this.mIntQueueOn = false;
+      this.mMappedRegions = [];
+      this.mCycles = 0;
+      _ref = this.mRegAccess;
+      for (_j = 0, _len = _ref.length; _j < _len; _j++) {
+        r = _ref[_j];
+        r(0);
+      }
+      this.regSP(0xffff);
+      _ref1 = this.mDevices;
+      _results = [];
+      for (_k = 0, _len1 = _ref1.length; _k < _len1; _k++) {
+        d = _ref1[_k];
+        _results.push(d.reset());
+      }
+      return _results;
+    };
 
     Dcpu16.prototype.onPreExec = function(fn) {
       return this.mPreExec = fn;
@@ -10351,11 +10361,11 @@ require.define("/dcpu-decode.js", function (require, module, exports, __dirname,
     };
 
     IStream.prototype.setPC = function(v) {
-      return index(v);
+      return this.index(v);
     };
 
     IStream.prototype.getPC = function() {
-      return index();
+      return this.index();
     };
 
     return IStream;
@@ -10703,10 +10713,12 @@ require.define("/dcpu-decode.js", function (require, module, exports, __dirname,
     ];
 
     function Instr(stream) {
-      var _ref;
+      var addr, word, _ref;
       this.mIStream = stream;
       this.mAddr = this.mIStream.index();
-      _ref = this.decode(this.mIStream.nextWord()), this.mOpc = _ref[0], this.mValA = _ref[1], this.mValB = _ref[2];
+      addr = this.mIStream.getPC();
+      word = this.mIStream.nextWord();
+      _ref = this.decode(word), this.mOpc = _ref[0], this.mValA = _ref[1], this.mValB = _ref[2];
       this.mParams = this._getParams();
     }
 
@@ -11230,9 +11242,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
           result: "success"
         };
       } else if (toks[0] === "DAT") {
-        console.log(input);
         toks = input.match(/[^ \t]+/g).slice(1).join(" ").split(",");
-        console.log("Array<" + toks + ">");
         for (_i = 0, _len = toks.length; _i < _len; _i++) {
           tok = toks[_i];
           tok = tok.trim();
@@ -11409,6 +11419,16 @@ require.define("/hw/lem1802.js", function (require, module, exports, __dirname, 
       }
     };
 
+    Lem1802.prototype.reset = function() {
+      this.mScreen = void 0;
+      this.mScreenAddr = 0;
+      this.mUserFont = void 0;
+      this.mFontAddr = 0;
+      this.mUserPalette = void 0;
+      this.mPaletteAddr = 0;
+      return this.clear();
+    };
+
     Lem1802.prototype.memMapScreen = function() {
       var base, _;
       base = this.mCpu.regB();
@@ -11540,7 +11560,6 @@ require.define("/hw/lem1802.js", function (require, module, exports, __dirname, 
       lem = this;
       return function(a, v) {
         var x, y;
-        console.log("Screen CB");
         x = a % 32;
         y = Math.floor(a / 32);
         return lem.drawChar(x, y, v);
@@ -11551,7 +11570,7 @@ require.define("/hw/lem1802.js", function (require, module, exports, __dirname, 
       var lem;
       lem = this;
       return function(a, v) {
-        return console.log("Font CB");
+        return;
       };
     };
 
@@ -11559,7 +11578,7 @@ require.define("/hw/lem1802.js", function (require, module, exports, __dirname, 
       var lem;
       lem = this;
       return function(a, v) {
-        return console.log("Palette CB");
+        return;
       };
     };
 
@@ -11614,12 +11633,16 @@ require.define("/hw/device.js", function (require, module, exports, __dirname, _
       return 0;
     };
 
-    Device.prototype.query = function() {
-      return this.fromMfgrId(this.mfgr(), this.id(), this.ver());
-    };
-
     Device.prototype.hwInterrupt = function() {
       return;
+    };
+
+    Device.prototype.reset = function() {
+      return;
+    };
+
+    Device.prototype.query = function() {
+      return this.fromMfgrId(this.mfgr(), this.id(), this.ver());
     };
 
     Device.prototype.interrupt = function(m) {
@@ -11655,7 +11678,7 @@ require.define("/hw/device.js", function (require, module, exports, __dirname, _
 require.define("/webapp.js", function (require, module, exports, __dirname, __filename) {
     // Generated by CoffeeScript 1.3.1
 (function() {
-  var $, asm, assemble, cpu, dasm, dcpu, decode, dumpMemory, lem1802, regs, run, timer, updateCycles, updateDisasm, updateRegs;
+  var $, asm, assemble, cpu, dasm, dcpu, decode, dumpMemory, lem1802, regs, reset, run, timer, updateCycles, updateRegs;
 
   $ = require('jquery-browserify');
 
@@ -11694,29 +11717,19 @@ require.define("/webapp.js", function (require, module, exports, __dirname, __fi
     return _results;
   };
 
-  updateDisasm = function() {
-    var addr, child, disasm, istream, parent, s, _results;
-    parent = $("#disasm");
-    disasm = "";
-    addr = 0;
-    istream = new decode.IStream(cpu.mMemory);
-    _results = [];
-    while (s = dasm.Disasm.ppNextInstr(istream)) {
-      child = $("<span id='pc" + addr + "' class='instruction'>" + (dasm.Disasm.fmtHex(addr)) + " | " + s + "</span><br>");
-      parent.append(child);
-      _results.push(addr = istream.index());
-    }
-    return _results;
-  };
-
   updateCycles = function() {
     var cycles;
     cycles = "" + cpu.mCycles;
     return $("#cycles").html(cycles);
   };
 
-  dumpMemory = function(base) {
-    var body, c, col, html, r, row, v, _i, _j, _results;
+  dumpMemory = function() {
+    var base, body, c, col, html, r, row, v, _i, _j, _results;
+    base = $("#membase").val();
+    if (!base) {
+      base = 0;
+    }
+    base = parseInt(base);
     body = $("#memdump-body");
     body.empty();
     _results = [];
@@ -11734,20 +11747,15 @@ require.define("/webapp.js", function (require, module, exports, __dirname, __fi
   };
 
   assemble = function(text) {
-    var base, state;
+    var state;
+    text = window.editor.getValue();
     state = new asm.Assembler().assemble(text);
     if (state.result !== "success") {
       return $("#asm-error").html("Error: Line " + state.line + ": " + state.message);
     }
     $("#asm-error").html("");
     cpu.loadBinary(state.code);
-    cpu.regPC(0);
-    updateRegs();
-    base = $("#membase").val();
-    if (!base) {
-      base = 0;
-    }
-    return dumpMemory(parseInt(base));
+    return cpu.regPC(0);
   };
 
   run = function() {
@@ -11766,21 +11774,22 @@ require.define("/webapp.js", function (require, module, exports, __dirname, __fi
     return timer = setInterval(cb, 50);
   };
 
-  $(function() {
-    var btnAssembleClick, canvas, fb;
-    regs = [$("#RegA"), $("#RegB"), $("#RegC"), $("#RegX"), $("#RegY"), $("#RegZ"), $("#RegI"), $("#RegJ"), $("#RegPC"), $("#RegSP"), $("#RegO")];
-    btnAssembleClick = function() {
-      return assemble(window.editor.getValue());
-    };
+  reset = function() {
+    cpu.reset();
+    assemble();
     updateRegs();
-    updateDisasm();
-    dumpMemory(0);
-    btnAssembleClick();
+    updateCycles();
+    return dumpMemory();
+  };
+
+  $(function() {
+    var canvas, fb;
+    regs = [$("#RegA"), $("#RegB"), $("#RegC"), $("#RegX"), $("#RegY"), $("#RegZ"), $("#RegI"), $("#RegJ"), $("#RegPC"), $("#RegSP"), $("#RegO")];
     $("#btnStep").click(function() {
       cpu.step();
       return updateRegs();
     });
-    $("#btnAssemble").click(btnAssembleClick);
+    $("#btnAssemble").click(assemble);
     $("#membase").change(function() {
       var base;
       base = $("#membase").val();
@@ -11798,10 +11807,14 @@ require.define("/webapp.js", function (require, module, exports, __dirname, __fi
         return timer = null;
       }
     });
+    $("#btnReset").click(reset);
     canvas = $("#framebuffer")[0];
     fb = new lem1802.Lem1802(cpu, canvas);
     cpu.addDevice(fb);
-    return updateCycles();
+    updateCycles();
+    assemble();
+    updateRegs();
+    return dumpMemory();
   });
 
 }).call(this);

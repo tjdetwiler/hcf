@@ -35,6 +35,15 @@ class Lem1802 extends Device
     when 3 then @setBorderColor()
     else undefined
 
+  reset: () ->
+    @mScreen = undefined
+    @mScreenAddr = 0
+    @mUserFont = undefined
+    @mFontAddr = 0
+    @mUserPalette = undefined
+    @mPaletteAddr = 0
+    @clear()
+
   memMapScreen:     () ->
     base = @mCpu.regB()
     if base is 0
@@ -115,26 +124,22 @@ class Lem1802 extends Device
     @mCtx.fillRect(0, 0, 128 * @mScale, 96 * @mScale)
 
   #
-  # Memory Mapped Callbacks
+  # Memory Mapped Callback Generators
   #
   _screenCB:    () ->
     lem = this
     (a,v) ->
-      console.log "Screen CB"
       x = a % 32
       y = Math.floor a/32
       lem.drawChar x,y,v
 
   _fontCB:      () ->
     lem = this
-    (a,v) ->
-      console.log "Font CB"
+    (a,v) -> undefined
 
   _paletteCB:   () ->
     lem = this
-    (a,v) ->
-      console.log "Palette CB"
-
+    (a,v) -> undefined
 
   VID_RAM_SIZE:     386
   FONT_RAM_SIZE:    256

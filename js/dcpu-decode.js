@@ -29,11 +29,11 @@
     };
 
     IStream.prototype.setPC = function(v) {
-      return index(v);
+      return this.index(v);
     };
 
     IStream.prototype.getPC = function() {
-      return index();
+      return this.index();
     };
 
     return IStream;
@@ -381,10 +381,12 @@
     ];
 
     function Instr(stream) {
-      var _ref;
+      var addr, word, _ref;
       this.mIStream = stream;
       this.mAddr = this.mIStream.index();
-      _ref = this.decode(this.mIStream.nextWord()), this.mOpc = _ref[0], this.mValA = _ref[1], this.mValB = _ref[2];
+      addr = this.mIStream.getPC();
+      word = this.mIStream.nextWord();
+      _ref = this.decode(word), this.mOpc = _ref[0], this.mValA = _ref[1], this.mValB = _ref[2];
       this.mParams = this._getParams();
     }
 

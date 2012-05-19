@@ -1,10 +1,13 @@
-
+#
+# 
+#
 $         = require 'jquery-browserify'
 dcpu      = require '../dcpu'
 dasm      = require '../dcpu-disasm'
 decode    = require '../dcpu-decode'
 asm       = require '../dcpu-asm'
 lem1802   = require '../hw/lem1802'
+
 cpu = new dcpu.Dcpu16()
 cpu.onPostExec = (i) ->
   disasm = dasm.Disasm.ppInstr i
@@ -19,28 +22,18 @@ updateRegs = () ->
   for v,i in regs
     v.html('0x'+dasm.Disasm.fmtHex cpu.readReg(i))
 
-updateDisasm = () ->
-  parent = $("#disasm")
-  disasm = ""
-  addr = 0
-  istream = new decode.IStream cpu.mMemory
-  while s = dasm.Disasm.ppNextInstr istream
-    child = $ "<span
- id='pc#{addr}'
- class='instruction'>
-#{dasm.Disasm.fmtHex addr} | #{s}</span><br>"
-    parent.append child
-    addr = istream.index()
-
 updateCycles = () ->
   cycles = "#{cpu.mCycles}"
   $("#cycles").html cycles
 
-dumpMemory = (base) ->
+dumpMemory = () ->
+  base = $("#membase").val()
+  base = 0 if not base
+  base = parseInt base
   body = $ "#memdump-body"
   body.empty()
   for r in [0..4]
-    row = $ "<tr><td>#{dasm.Disasm.fmtHex base+ (r*8)}</td></tr>"
+    row = $ "<tr><td>#{dasm.Disasm.fmtHex base + (r*8)}</td></tr>"
 
     for c in [0..7]
       v = cpu.readMem base + (r*8) + c
@@ -50,16 +43,13 @@ dumpMemory = (base) ->
     body.append row
 
 assemble = (text) ->
+  text = window.editor.getValue()
   state = new asm.Assembler().assemble(text)
   if state.result isnt "success"
     return $("#asm-error").html("Error: Line #{state.line}: #{state.message}")
   $("#asm-error").html("")
   cpu.loadBinary state.code
   cpu.regPC 0
-  updateRegs()
-  base = $("#membase").val()
-  base = 0 if not base
-  dumpMemory parseInt base
 
 run = () ->
   cb = () ->
@@ -69,7 +59,14 @@ run = () ->
     updateCycles()
   if timer then clearInterval timer
   timer = setInterval cb, 50
-  
+
+reset = () ->
+  cpu.reset()
+  assemble()
+  updateRegs()
+  updateCycles()
+  dumpMemory()
+
 
 $ () ->
   regs = [
@@ -85,18 +82,10 @@ $ () ->
     ($ "#RegSP"),
     ($ "#RegO")]
 
-  btnAssembleClick = () ->
-    assemble window.editor.getValue()
-
-  updateRegs()
-  updateDisasm()
-  dumpMemory 0
-  btnAssembleClick()
-
   $("#btnStep").click ()->
     cpu.step()
     updateRegs()
-  $("#btnAssemble").click btnAssembleClick
+  $("#btnAssemble").click assemble
   $("#membase").change () ->
     base = $("#membase").val()
     base = 0 if not base
@@ -107,9 +96,15 @@ $ () ->
     if timer
       clearInterval timer
       timer = null
+  $("#btnReset").click reset
 
   canvas = $("#framebuffer")[0]
   fb = new lem1802.Lem1802 cpu, canvas
   cpu.addDevice fb
+
   updateCycles()
+  assemble()
+  updateRegs()
+  dumpMemory()
+
 

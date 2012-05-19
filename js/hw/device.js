@@ -28,12 +28,16 @@
       return 0;
     };
 
-    Device.prototype.query = function() {
-      return this.fromMfgrId(this.mfgr(), this.id(), this.ver());
-    };
-
     Device.prototype.hwInterrupt = function() {
       return;
+    };
+
+    Device.prototype.reset = function() {
+      return;
+    };
+
+    Device.prototype.query = function() {
+      return this.fromMfgrId(this.mfgr(), this.id(), this.ver());
     };
 
     Device.prototype.interrupt = function(m) {

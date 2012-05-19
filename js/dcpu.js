@@ -19,29 +19,15 @@
     Dcpu16.name = 'Dcpu16';
 
     function Dcpu16() {
-      var cpu, name, op, x, _i, _j, _len, _len1, _ref, _ref1;
+      var cpu, name, op, _i, _j, _len, _len1, _ref, _ref1;
       cpu = this;
-      this.mCycles = 0;
       this.mCCFail = false;
       this.mIntQueueOn = false;
-      this.mMemory = (function() {
-        var _i, _results;
-        _results = [];
-        for (x = _i = 0; 0 <= 0xffff ? _i <= 0xffff : _i >= 0xffff; x = 0 <= 0xffff ? ++_i : --_i) {
-          _results.push(0);
-        }
-        return _results;
-      })();
+      this.mCycles = 0;
+      this.mMemory = [];
+      this.mMappedRegions = [];
+      this.mRegStorage = [];
       this.mIStream = new IStream(this.mMemory);
-      this.mRegStorage = (function() {
-        var _i, _results;
-        _results = [];
-        for (x = _i = 0; 0 <= 0xf ? _i <= 0xf : _i >= 0xf; x = 0 <= 0xf ? ++_i : --_i) {
-          _results.push(0);
-        }
-        return _results;
-      })();
-      this.mRegStorage[Value.REG_SP] = 0xffff;
       this.mRegAccess = [
         this._regGen(Value.REG_A), this._regGen(Value.REG_B), this._regGen(Value.REG_C), this._regGen(Value.REG_X), this._regGen(Value.REG_Y), this._regGen(Value.REG_Z), this._regGen(Value.REG_I), this._regGen(Value.REG_J), function(v) {
           return cpu.mIStream.index(v);
@@ -66,8 +52,32 @@
         }
       }
       this.mDevices = [];
-      this.mMappedRegions = [];
+      this.reset();
     }
+
+    Dcpu16.prototype.reset = function() {
+      var d, r, x, _i, _j, _k, _len, _len1, _ref, _ref1, _results;
+      this.mCCFail = false;
+      for (x = _i = 0; 0 <= 0xffff ? _i <= 0xffff : _i >= 0xffff; x = 0 <= 0xffff ? ++_i : --_i) {
+        this.mMemory[x] = 0;
+      }
+      this.mIntQueueOn = false;
+      this.mMappedRegions = [];
+      this.mCycles = 0;
+      _ref = this.mRegAccess;
+      for (_j = 0, _len = _ref.length; _j < _len; _j++) {
+        r = _ref[_j];
+        r(0);
+      }
+      this.regSP(0xffff);
+      _ref1 = this.mDevices;
+      _results = [];
+      for (_k = 0, _len1 = _ref1.length; _k < _len1; _k++) {
+        d = _ref1[_k];
+        _results.push(d.reset());
+      }
+      return _results;
+    };
 
     Dcpu16.prototype.onPreExec = function(fn) {
       return this.mPreExec = fn;

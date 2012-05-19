@@ -230,9 +230,7 @@ class Assembler
       # Comment
       return {result: "success"}
     else if toks[0] == "DAT"
-      console.log input
       toks = input.match(/[^ \t]+/g)[1..].join(" ").split(",")
-      console.log "Array<#{toks}>"
       for tok in toks
         tok = tok.trim()
         if tok[0] is ";" then break

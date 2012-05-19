@@ -21,13 +21,13 @@ IStream = decode.IStream
 class Dcpu16
   constructor: () ->
     cpu = @
-    @mCycles = 0
-    @mCCFail = false
-    @mIntQueueOn = false
-    @mMemory = (0 for x in [0..0xffff])
+    @mCCFail        = false
+    @mIntQueueOn    = false
+    @mCycles        = 0
+    @mMemory        = []
+    @mMappedRegions = []
+    @mRegStorage    = []
     @mIStream = new IStream @mMemory
-    @mRegStorage = (0 for x in [0..0xf])
-    @mRegStorage[Value.REG_SP] = 0xffff
     @mRegAccess = [
       @_regGen(Value.REG_A), @_regGen(Value.REG_B), @_regGen(Value.REG_C),
       @_regGen(Value.REG_X), @_regGen(Value.REG_Y), @_regGen(Value.REG_Z),
@@ -46,7 +46,23 @@ class Dcpu16
         name = "_exec_#{op.id.toLowerCase()}"
         @mAdvExecutors[op.op] = name
     @mDevices = []
+    @reset()
+
+  #
+  # Restore CPU to the Power-On Reset state.
+  #
+  reset: () ->
+    @mCCFail = false
+    @mMemory[x] = 0 for x in [0..0xffff]
+    @mIntQueueOn = false
     @mMappedRegions = []
+    @mCycles = 0
+    for r in @mRegAccess
+      r 0
+    @regSP 0xffff
+    for d in @mDevices
+      d.reset()
+
 
   #
   # Event setter functions.

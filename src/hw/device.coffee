@@ -20,19 +20,25 @@ class Device
   ver: () -> 0
 
   #
-  # Loads CPU registers with HW parameters
-  #
-  query: () -> @fromMfgrId @mfgr(), @id(), @ver()
-
-  #
   # Handles a HW interrupt from the CPU
   #
   hwInterrupt: () -> undefined
 
   #
+  # Resets a peripheral
+  #
+  reset: () -> undefined
+
+  #
+  # Loads CPU registers with HW parameters
+  #
+  query: () -> @fromMfgrId @mfgr(), @id(), @ver()
+
+  #
   # Sends an interrupt to the CPU
   #
   interrupt: (m) -> @mCpu.interrupt m
+
   mapMemory: (base, len, cb) -> @mCpu.mapDevice base, len, cb
   unmapMemory: (base) -> @mCpu.unmapDevice base
 

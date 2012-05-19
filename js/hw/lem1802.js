@@ -60,6 +60,16 @@
       }
     };
 
+    Lem1802.prototype.reset = function() {
+      this.mScreen = void 0;
+      this.mScreenAddr = 0;
+      this.mUserFont = void 0;
+      this.mFontAddr = 0;
+      this.mUserPalette = void 0;
+      this.mPaletteAddr = 0;
+      return this.clear();
+    };
+
     Lem1802.prototype.memMapScreen = function() {
       var base, _;
       base = this.mCpu.regB();
@@ -191,7 +201,6 @@
       lem = this;
       return function(a, v) {
         var x, y;
-        console.log("Screen CB");
         x = a % 32;
         y = Math.floor(a / 32);
         return lem.drawChar(x, y, v);
@@ -202,7 +211,7 @@
       var lem;
       lem = this;
       return function(a, v) {
-        return console.log("Font CB");
+        return;
       };
     };
 
@@ -210,7 +219,7 @@
       var lem;
       lem = this;
       return function(a, v) {
-        return console.log("Palette CB");
+        return;
       };
     };
 

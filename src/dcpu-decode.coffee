@@ -21,8 +21,8 @@ class IStream
 
   nextWord: () -> @mStream[@mIndex++]
   index: (v) -> if v? then @mIndex=v else @mIndex
-  setPC: (v) -> index v
-  getPC: ( ) -> index()
+  setPC: (v) -> @index v
+  getPC: ( ) -> @index()
 
 class Value
   #
@@ -205,7 +205,9 @@ class Instr
   constructor: (stream) ->
     @mIStream = stream
     @mAddr = @mIStream.index()
-    [@mOpc, @mValA, @mValB] = @decode @mIStream.nextWord()
+    addr = @mIStream.getPC()
+    word = @mIStream.nextWord()
+    [@mOpc, @mValA, @mValB] = @decode word
     @mParams = @_getParams()
 
   decode: (instr) ->
