@@ -7,8 +7,7 @@
 #
 Module = {}
 
-device = require "./device"
-Device = device.Device
+Device = require("./device").Device
 
 class Lem1802 extends Device
   constructor: (cpu, canvas=undefined) ->

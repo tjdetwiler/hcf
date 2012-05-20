@@ -282,6 +282,7 @@ class Assembler
   emit: (stream) ->
     for i in @mInstrs
       i.emit stream 
+
   assemble: (text) ->
     prog = []
     lines = text.split "\n"

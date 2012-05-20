@@ -19,8 +19,8 @@
     function GenericClock(cpu) {
       GenericClock.__super__.constructor.call(this, "Generic Clock", cpu);
       this.mCount = 0;
-      this.mLastCount = 0;
       this.mIrqMsg = 0;
+      this.mTimer = null;
     }
 
     GenericClock.prototype.id = function() {
@@ -48,19 +48,31 @@
       }
     };
 
+    GenericClock.prototype.reset = function() {
+      if (this.mTimer) {
+        clearInterval(this.mTimer);
+      }
+      this.mCount = 0;
+      return this.mIrqMsg = 0;
+    };
+
     GenericClock.prototype.setRate = function() {
       this.mRate = this.mCpu.regB();
+      this.mCount = 0;
       if (this.mRate) {
+        console.log("" + this.mRate);
         this.mRate = Math.floor(60 / this.mRate);
+        console.log("" + this.mRate);
         this.mRate = 1000 / this.mRate;
-        console.log("Timer ticking every " + this.mRate + "ms");
-        return setTimeout(this.tick(), this.mRate);
+        console.log("" + this.mRate);
+        return this.mTimer = setInterval(this.tick(), this.mRate);
+      } else if (this.mTimer) {
+        return cancelInterval(this.mTimer);
       }
     };
 
     GenericClock.prototype.getTicks = function() {
-      this.mCpu.regC(this.mCount);
-      return this.mCount = 0;
+      return this.mCpu.regC(this.mCount);
     };
 
     GenericClock.prototype.setInterrupts = function() {
@@ -71,13 +83,9 @@
       var clock;
       clock = this;
       return function() {
-        console.log("ticking");
-        if (clock.mIrqMsg) {
-          clock.interrupt(clock.mIrqMsg);
-        }
         clock.mCount++;
-        if (clock.mRate) {
-          return setTimeout(clock.tick(), clock.mRate);
+        if (clock.mIrqMsg) {
+          return clock.interrupt(clock.mIrqMsg);
         }
       };
     };

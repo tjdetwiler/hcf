@@ -15,8 +15,8 @@ class GenericClock extends Device
   constructor: (cpu) ->
     super "Generic Clock", cpu
     @mCount = 0
-    @mLastCount = 0
     @mIrqMsg = 0
+    @mTimer = null
 
   id:   () -> 0x12d0b402
   mfgr: () -> 0x0
@@ -28,27 +28,48 @@ class GenericClock extends Device
     when 2 then @setInterrupts()
     else undefined
 
-  setRate:        () ->
-    @mRate = @mCpu.regB()
-    if @mRate
-      @mRate = Math.floor 60/@mRate
-      @mRate = 1000/@mRate
-      console.log "Timer ticking every #{@mRate}ms"
-      setTimeout @tick(), @mRate
-
-  getTicks:       () ->
-    @mCpu.regC @mCount
+  reset: () ->
+    if @mTimer then clearInterval @mTimer
     @mCount = 0
+    @mIrqMsg = 0
 
-  setInterrupts:  () ->
+  #
+  # Handles HWI #0
+  #
+  setRate: () ->
+    @mRate = @mCpu.regB()
+    @mCount = 0
+    if @mRate
+      # Start Timer at rate of 60/B ticks per second
+      console.log "#{@mRate}"
+      @mRate = Math.floor 60/@mRate
+      console.log "#{@mRate}"
+      @mRate = 1000/@mRate
+      console.log "#{@mRate}"
+      @mTimer = setInterval @tick(), @mRate
+    else if @mTimer
+      # Cancel Timer
+      cancelInterval @mTimer
+
+  #
+  # Handles HWI #1
+  #
+  getTicks: () ->
+    @mCpu.regC @mCount
+
+  #
+  # Handles HWI #2
+  #
+  setInterrupts: () ->
     @mIrqMsg = @mCpu.regB()
 
+  #
+  # Generates a callback function appropriate for setInterval
+  #
   tick: () ->
     clock = this
     () ->
-      console.log "ticking"
-      if clock.mIrqMsg then clock.interrupt clock.mIrqMsg
       clock.mCount++
-      if clock.mRate then setTimeout clock.tick(), clock.mRate
+      if clock.mIrqMsg then clock.interrupt clock.mIrqMsg
       
 exports.GenericClock = GenericClock

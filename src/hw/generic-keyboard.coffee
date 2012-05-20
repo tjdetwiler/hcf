@@ -7,9 +7,7 @@
 #
 Module = {}
 
-device = require "./device"
-
-Device = device.Device
+Device = require("./device").Device
 
 class GenericKeyboard extends Device
   constructor: (cpu) ->
@@ -27,20 +25,32 @@ class GenericKeyboard extends Device
     when 3 then @setInterrupts()
     else undefined
 
-  clearBuffer:    () ->
+  #
+  # Handles HWI #0
+  #
+  clearBuffer: () ->
     @mKeyBuffer = []
 
-  nextKey:        () -> 
+  #
+  # Handles HWI #1
+  #
+  nextKey: () -> 
     if @mKeyBuffer.length is 0
       return 0
     key = @mKeyBuffer[0]
     @mKeyBuffer=@mKeyBuffer[1..]
     @mCpu.regC key
 
-  isPressed:      () -> 
+  #
+  # Handles HWI #2
+  #
+  isPressed: () -> 
     @mCpu.regC 0
 
-  setInterrupts:  () -> 
+  #
+  # Handles HWI #3
+  #
+  setInterrupts: () -> 
     @mIrqMsg = @mCpu.regB()
 
 exports.GenericKeyboard = GenericKeyboard

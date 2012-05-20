@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <link href="css/bootstrap.css" rel="stylesheet">
-  <link href='http://fonts.googleapis.com/css?family=PT+Mono' rel='stylesheet' type='text/css'/>
   <link href='codemirror2/lib/codemirror.css' rel='stylesheet'>
   <link href='codemirror2/doc/docs.css' rel='stylesheet'>
   <script src="../js/web/application.js"></script>
@@ -11,7 +10,7 @@
   <script src="codemirror2/keymap/vim.js"></script>
   <style>
     .mono{
-      font-family: 'PT Mono', sans-serif;
+      font-family: 'Courier', sans-serif;
     }
     body {
       padding-top: 60px;
@@ -84,7 +83,7 @@
         <td>SP: </td>
         <td id="RegSP" class="reg mono"></td>
         <td>O: </td>
-        <td id="RegO" class="reg mono"></td>
+        <td id="RegEX" class="reg mono"></td>
       </tr>
       </tbody>
       </table>
@@ -127,7 +126,13 @@
         
         set a, ohhey
         jsr print
-        set pc, crash
+        
+        set a, 0
+        set b, 60
+        hwi 1
+        set a, 1
+:loop hwi 1
+        set pc, loop
         
 :print  set b, 0
 :print_loop
@@ -141,7 +146,7 @@
         set pc, print_loop
 :crash  set pc, crash
         
-:ohhey  dat "Oh hey!"
+:ohhey  dat "Generic-Clock Test"
         dat 0x0
 </textarea>
       <p id="asm-error"></p>
