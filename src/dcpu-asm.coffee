@@ -96,6 +96,13 @@ class RawValue
   emit: () -> undefined
   encode: () -> @mRaw
 
+class Data
+  constructor: (asm, dat) ->
+    @mAsm = asm
+    @mData = dat
+
+  emit: (stream) -> stream.push @mData
+
 class Instruction
   constructor: (asm, opc, vals) ->
     @mAsm = asm
@@ -109,13 +116,6 @@ class Instruction
     instr = @mOp | (enc[0] << 5) | (enc[1] << 10)
     stream.push instr
     v.emit stream for v in @mVals
-
-class Data
-  constructor: (asm, dat) ->
-    @mAsm = asm
-    @mData = dat
-
-  emit: (stream) -> stream.push @mData
 
 #
 # JSON Object File Linker
@@ -136,8 +136,6 @@ class JobLinker
     # Merge sections and symbols
     #
     for job in jobs
-      console.log syms
-      console.log job.sections[0].sym
       @mergeSyms(syms, job.sections[0].sym, code.length)
       code = code.concat job.sections[0].data
 
@@ -160,197 +158,220 @@ class JobLinker
       ]
 
 class Assembler
+  #
+  # Regex's for parsing
+  #
+  @reg_regex = ///^([a-zA-Z_]+)///
+  @ireg_regex = ///^\[\s*([a-zA-Z]+|\d+)\s*\]///
+  @lit_regex = ///^(0[xX][0-9a-fA-F]+|\d+)///
+  @ilit_regex = ///^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]///
+  @arr_regex = ///^\[\s*([0-9a-zA-Z]+)\s*\+\s*([0-9a-zA-Z]+)\s*\]///
+  @basic_regex = ///(\w+)\s+([^,]+)\s*,\s*([^,]+)///
+  @adv_regex = ///(\w+)\s+([^,]+)///
+  @str_regex = ///"([^"]*)"///
+
+  #
+  # Line Parsers.
+  #
+  # match: regular expression to match to each line.
+  # f: If a line matches the regex, the match object is passed to the function.
+  #
+  @LINE_PARSERS = [
+    @LP_EMPTY =   {match: /^$/,             f: 'lpEmpty'},
+    @LP_DIRECT =  {match: /^\..*/,            f: 'lpDirect'},
+    @LP_DAT =     {match: /^[dD][aA][tT]/,  f: 'lpDat'},
+    @LP_COMMENT = {match: /^;.*/,             f: 'lpComment'},
+    @LP_LABEL =   {match: /^:.*/,             f: 'lpLabel'},
+    @LP_ISIMP =   {match: @basic_regex,     f: 'lpIBasic'},
+    @LP_IADV =    {match: @adv_regex,       f: 'lpIAdv'},
+  ]
+
+  #
+  # Value Parsers. Used by ISIMP and IADV line parsers.
+  #
+  # match: regular expression to match to each value.
+  # f: If a line matches the regex, the match object is passed to the function.
+  #
+  @VALUE_PARSERS = [
+    @VP_WORD =    {match: @reg_regex,       f: 'vpWord'},
+    @VP_IWORD =   {match: @ireg_regex,      f: 'vpIWord'},
+    @VP_LIT =     {match: @lit_regex,       f: 'vpLit'},
+    @VP_ILIT =    {match: @ilit_regex,      f: 'vpILit'},
+    @VP_ARR =     {match: @arr_regex,       f: 'vpArr'},
+  ]
+
+  @DIRECTS = [
+    @DIR_GLOBAL =   {id: ".globl",   f: 'dirGlobal'},
+    @DIR_GLOBAL0 =  {id: ".global",  f: 'dirGlobal'},
+    @DIR_TEXT =     {id: ".text",    f: 'dirText'},
+    @DIR_DATA =     {id: ".data",    f: 'dirData'},
+  ]
+
   constructor: () ->
+    @mPc = 0
     @mText = ""
     @mLabels = {}
-    @mPc = 0
-    @mInstrs = []
+    @mInstrs = {}
     @mOpcDict = {}
+    @mSect = ".text"
     for op in Instr.BASIC_OPS
       if op? then @mOpcDict[op.id.toUpperCase()] = op
     for op in Instr.ADV_OPS
       if op? then @mOpcDict[op.id.toUpperCase()] = op
 
-  label: (name, addr) -> @mLabels[name] = addr
-  lookup: (name) -> @mLabels[name]
-  defined: (name) -> lookup(name)?
+  label: (name, addr) ->
+    if not @mLabels[@mSect]?
+      @mLabels[@mSect] = {}
+    @mLabels[@mSect][name] = addr
 
-  incPc: () -> ++@mPc
+  lookup:      (name) -> @mLabels[@mSect][name]
+  defined:     (name) -> lookup(name)?
+  section:        (s) -> @mSect = s
+  incPc:           () -> ++@mPc
 
   processValue: (val) ->
     val = val.trim()
-    reg_regex = ///^([a-zA-Z_]+)///
-    ireg_regex = ///^\[\s*([a-zA-Z]+|\d+)\s*\]///
-    lit_regex = ///^(0[xX][0-9a-fA-F]+|\d+)///
-    ilit_regex = ///^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]///
-    arr_regex = ///^
-      \[\s*
-        ([0-9a-zA-Z]+)\s*\+\s*([0-9a-zA-Z]+) # [alphanum + alphanum]
-      \s*\]///
-
-    success = (val) ->
-      result: "success"
-      value: val
-
-    if match = val.match reg_regex
-      #
-      # See if its a basic or special register. if not, assume label
-      #
-      switch match[1]
-        when "POP"    then success new RawValue @, 0x18
-        when "PEEK"   then success new RawValue @, 0x19
-        when "PUSH"   then success new RawValue @, 0x1a
-        when "SP"     then success new RawValue @, 0x1b
-        when "PC"     then success new RawValue @, 0x1c
-        when "O"      then success new RawValue @, 0x1d
-        else
-          regid = dasm.Disasm.REG_DISASM.indexOf match[1]
-          if regid == -1
-            return success new LitValue(@, match[1])
-          else
-            return success new RegValue @, regid
-    else if match = val.match ireg_regex
-      regid = dasm.Disasm.REG_DISASM.indexOf match[1]
-      if regid == -1
-        return success new MemValue(@, undefined, new LitValue(@, match[1]))
-      else
-        return success new MemValue(@, regid, undefined)
-    else if match = val.match lit_regex
-      return success new LitValue @, parseInt match[1]
-    else if match = val.match ilit_regex
-      n = parseInt match[1]
-      return success (new MemValue @, undefined, new LitValue(@, n))
-    else if match = val.match arr_regex
-      if (r = dasm.Disasm.REG_DISASM.indexOf match[2]) != -1
-        return success new MemValue @, r, new LitValue(@, match[1])
-      if (r = dasm.Disasm.REG_DISASM.indexOf match[1]) != -1
-        return success new MemValue @, r, new LitValue(@, match[2])
-      else
-        console.log "match[1]: #{match[1]}"
-        console.log "match[2]: #{match[2]}"
-        undefined.crash()
-        return {result: "fail", message: "Unmatched value #{val}"}
-      return success new MemValue @, r, new LitValue(@, n)
-    else
-      return r =
-        result: "fail"
-        message: "Unmatched value #{val}"
+    match = undefined
+    for vp in Assembler.VALUE_PARSERS
+      if match = val.match vp.match
+        return this[vp.f] match
+    console.log "Unmatched value: #{val}"
 
   processLine: (line) ->
-    # input is the raw, untransformed string
-    # line is everything uppercase, before the first semicolon
-    input = line.trim()
-    line = line.split(";")[0].toUpperCase().trim()
-    if line is ""
-      return r =
-        result: "success"
+    line = line.trim()
+    match = undefined
+    for lp in Assembler.LINE_PARSERS
+      if match = line.match lp.match
+        return this[lp.f] match
+    console.log "Unmatched line: #{line}"
 
-    basic_regex = ///
-      (\w+)\s+        #Opcode
-      (
-        [^,]+         #ValA
-      )\s*,\s*(       #ValB
-        [^,]+
-    )///
-    adv_regex = ///
-      (\w+)\s+      #Opcode
-      (
-        [^,]+         #ValA
-    )///
-    str_regex = ///"([^"]*)"///
-    #
-    # Either:
-    #   > Label
-    #   > Instruction
-    #   > Directive?
-    #
-    toks = line.match /[^ \t]+/g
-    if input[0] is ":"
-      toks = (input.match /[^ \t]+/g)
-      @label toks[0][1..].toUpperCase(), @mPc
-      # Process rest of line
-      return @processLine (toks[1..].join " ")
-    else if line[0] is ";"
-      # Comment
-      return {result: "success"}
-    else if toks[0] == "DAT"
-      toks = input.match(/[^ \t]+/g)[1..].join(" ").split(",")
-      for tok in toks
-        tok = tok.trim()
-        if tok[0] is ";" then break
-        if match = tok.match str_regex
-          for c in match[1]
-            @mInstrs.push(new Data @, c.charCodeAt(0))
-        else if (n = parseInt tok)?
-          @mInstrs.push(new Data @, n)
-        else
-          console.log "Bad Data String: '#{tok}'"
-      return {result: "success"}
-    else if match = line.match basic_regex
-      # Basic Opcode
-      [opc, valA, valB] = match[1..3]
-      if not @mOpcDict[opc]?
-        return r =
-          result: "fail"
-          message: "Unknown Opcode: #{opc}"
+  out: (i) ->
+    if not @mInstrs[@mSect]?
+      @mInstrs[@mSect] = []
+    @mInstrs[@mSect].push i
 
-      enc = @mOpcDict[opc].op
-      @incPc()
-      valA = @processValue valA
-      if valA.result isnt "success" then return valA
-      valB = @processValue valB
-      if valB.result isnt "success" then return valB
-      @mInstrs.push new Instruction @,enc, [valA.value, valB.value]
-      return r = 
-        result: "success"
-    else if match = line.match adv_regex
-      [opc, valA] = match[1..2]
-      if not @mOpcDict[opc]?
-        return r =
-          result: "fail"
-          message: "Unknown Opcode: #{opc}"
-      enc = @mOpcDict[opc].op
-      @incPc()
-      valB = @processValue valA
-      if valB.result isnt "success" then return valB
-      valA = new RawValue @, enc
-      @mInstrs.push new Instruction @, 0, [valA,valB.value]
-      return r =
-        result: "success"
-    else
-      return r =
-        result: "fail"
-        source: line
-        message: "Syntax Error"
-
-  emit: (stream) ->
-    for i in @mInstrs
+  emit: (sec, stream) ->
+    for i in @mInstrs[sec]
       i.emit stream 
 
   assemble: (text) ->
-    prog = []
     lines = text.split "\n"
-    index = 1
     for l in lines
-      state = @processLine l
-      if state.result isnt "success"
-        state.line = index
-        return state
-      index++
-    @emit prog
-    r =
+      @processLine l
+
+    #
+    # Instruction objects are constained in lists by section.
+    #
+    sections = []
+    for s,i of @mInstrs
+      prog = []
+      @emit s, prog
+      sections.push {name: s, data: prog, sym: @mLabels[s]}
+
+    return r =
       format: "job"
       version: 0.1
       source: "Tims Assembler"
-      file: "??"
-      sections: [
-        {name: ".text", data: prog, sym: @mLabels}
-      ]
-    return {result: "success", code: r}
+      sections: sections
 
   assembleAndLink: (text) ->
     job = @assemble text
-    exe = JobLinker.link [job.code]
+    exe = JobLinker.link [job]
+
+  lpEmpty:  (match) ->
+  lpDirect: (match) ->
+  lpDat:    (match) ->
+    toks = match[0].match(/[^ \t]+/g)[1..].join(" ").split(",")
+    for tok in toks
+      tok = tok.trim()
+      if tok[0] is ";" then break
+      if match = tok.match Assembler.str_regex
+        for c in match[1]
+          @out(new Data @, c.charCodeAt(0))
+      else if (n = parseInt tok)?
+        @out(new Data @, n)
+      else
+        console.log "Bad Data String: '#{tok}'"
+
+  lpComment:(match) ->
+
+  lpLabel:  (match) ->
+    toks = match[0].match /[^ \t]+/g
+    @label toks[0][1..], @mPc
+    @processLine (toks[1..].join " ")
+
+  lpIBasic: (match) ->
+    [opc, valA, valB] = match[1..3]
+    if not @mOpcDict[opc]?
+      return r =
+        result: "fail"
+        message: "Unknown Opcode: #{opc}"
+    enc = @mOpcDict[opc].op
+    @incPc()
+    valA = @processValue valA
+    valB = @processValue valB
+    @out new Instruction(@, enc, [valA, valB])
+
+  lpIAdv:   (match) ->
+    [opc, valA] = match[1..2]
+    if not @mOpcDict[opc]?
+      return r =
+        result: "fail"
+        message: "Unknown Opcode: #{opc}"
+    enc = @mOpcDict[opc].op
+    @incPc()
+    valB = @processValue valA
+    valA = new RawValue @, enc
+    @out new Instruction(@, 0, [valA,valB])
+
+  #
+  # Any word-like matches. This means all of the following are handled:
+  #   Regs (A,B,C,X,Y,Z,EX,PC,SP)
+  #   Stack Ops (PUSH, POP, PEEK, PICK)
+  #   Label references
+  #
+  vpWord:  (match) ->
+    switch match[1].toUpperCase()
+      when "POP"    then new RawValue @, 0x18
+      when "PEEK"   then new RawValue @, 0x19
+      when "PUSH"   then new RawValue @, 0x1a
+      when "SP"     then new RawValue @, 0x1b
+      when "PC"     then new RawValue @, 0x1c
+      when "O"      then new RawValue @, 0x1d
+      else
+        regid = dasm.Disasm.REG_DISASM.indexOf match[1]
+        if regid == -1
+          return new LitValue(@, match[1])
+        else
+          return new RegValue(@, regid)
+
+  vpIWord: (match) ->
+    regid = dasm.Disasm.REG_DISASM.indexOf match[1]
+    if regid == -1
+      return new MemValue(@, undefined, new LitValue(@, match[1]))
+    else
+      return new MemValue(@, regid, undefined)
+
+  vpLit:  (match) ->
+    new LitValue(@, parseInt match[1])
+
+  vpILit: (match) ->
+    n = parseInt match[1]
+    new MemValue(@, undefined, new LitValue(@, n))
+
+  vpArr:  (match) ->
+    if (r = dasm.Disasm.REG_DISASM.indexOf match[2]) != -1
+      return new MemValue(@, r, new LitValue(@, match[1]))
+    if (r = dasm.Disasm.REG_DISASM.indexOf match[1]) != -1
+      return new MemValue(@, r, new LitValue(@, match[2]))
+    else
+      console.log "Unmatched value #{val}"
+
+  dirGlobal: (line) -> undefined
+
+  dirText: (_) -> @section ".text"
+
+  dirData: (_) -> @section ".data"
 
 exports.Assembler = Assembler
 exports.JobLinker = JobLinker

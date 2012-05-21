@@ -57,7 +57,7 @@
       cpu = this.dcpu;
       return fs.readFile(fn, "utf8", function(err, data) {
         if (!err) {
-          return cpu.loadBinary(eval(data));
+          return cpu.loadBinary(eval("(" + data + ")").sections[0].data);
         } else {
           return console.log("Error loading binary");
         }

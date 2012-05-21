@@ -11092,6 +11092,23 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
 
   })();
 
+  Data = (function() {
+
+    Data.name = 'Data';
+
+    function Data(asm, dat) {
+      this.mAsm = asm;
+      this.mData = dat;
+    }
+
+    Data.prototype.emit = function(stream) {
+      return stream.push(this.mData);
+    };
+
+    return Data;
+
+  })();
+
   Instruction = (function() {
 
     Instruction.name = 'Instruction';
@@ -11131,23 +11148,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
 
   })();
 
-  Data = (function() {
-
-    Data.name = 'Data';
-
-    function Data(asm, dat) {
-      this.mAsm = asm;
-      this.mData = dat;
-    }
-
-    Data.prototype.emit = function(stream) {
-      return stream.push(this.mData);
-    };
-
-    return Data;
-
-  })();
-
   JobLinker = (function() {
 
     JobLinker.name = 'JobLinker';
@@ -11174,8 +11174,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
       syms = {};
       for (_i = 0, _len = jobs.length; _i < _len; _i++) {
         job = jobs[_i];
-        console.log(syms);
-        console.log(job.sections[0].sym);
         this.mergeSyms(syms, job.sections[0].sym, code.length);
         code = code.concat(job.sections[0].data);
       }
@@ -11210,13 +11208,90 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
 
     Assembler.name = 'Assembler';
 
+    Assembler.reg_regex = /^([a-zA-Z_]+)/;
+
+    Assembler.ireg_regex = /^\[\s*([a-zA-Z]+|\d+)\s*\]/;
+
+    Assembler.lit_regex = /^(0[xX][0-9a-fA-F]+|\d+)/;
+
+    Assembler.ilit_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]/;
+
+    Assembler.arr_regex = /^\[\s*([0-9a-zA-Z]+)\s*\+\s*([0-9a-zA-Z]+)\s*\]/;
+
+    Assembler.basic_regex = /(\w+)\s+([^,]+)\s*,\s*([^,]+)/;
+
+    Assembler.adv_regex = /(\w+)\s+([^,]+)/;
+
+    Assembler.str_regex = /"([^"]*)"/;
+
+    Assembler.LINE_PARSERS = [
+      Assembler.LP_EMPTY = {
+        match: /^$/,
+        f: 'lpEmpty'
+      }, Assembler.LP_DIRECT = {
+        match: /^\..*/,
+        f: 'lpDirect'
+      }, Assembler.LP_DAT = {
+        match: /^[dD][aA][tT]/,
+        f: 'lpDat'
+      }, Assembler.LP_COMMENT = {
+        match: /^;.*/,
+        f: 'lpComment'
+      }, Assembler.LP_LABEL = {
+        match: /^:.*/,
+        f: 'lpLabel'
+      }, Assembler.LP_ISIMP = {
+        match: Assembler.basic_regex,
+        f: 'lpIBasic'
+      }, Assembler.LP_IADV = {
+        match: Assembler.adv_regex,
+        f: 'lpIAdv'
+      }
+    ];
+
+    Assembler.VALUE_PARSERS = [
+      Assembler.VP_WORD = {
+        match: Assembler.reg_regex,
+        f: 'vpWord'
+      }, Assembler.VP_IWORD = {
+        match: Assembler.ireg_regex,
+        f: 'vpIWord'
+      }, Assembler.VP_LIT = {
+        match: Assembler.lit_regex,
+        f: 'vpLit'
+      }, Assembler.VP_ILIT = {
+        match: Assembler.ilit_regex,
+        f: 'vpILit'
+      }, Assembler.VP_ARR = {
+        match: Assembler.arr_regex,
+        f: 'vpArr'
+      }
+    ];
+
+    Assembler.DIRECTS = [
+      Assembler.DIR_GLOBAL = {
+        id: ".globl",
+        f: 'dirGlobal'
+      }, Assembler.DIR_GLOBAL0 = {
+        id: ".global",
+        f: 'dirGlobal'
+      }, Assembler.DIR_TEXT = {
+        id: ".text",
+        f: 'dirText'
+      }, Assembler.DIR_DATA = {
+        id: ".data",
+        f: 'dirData'
+      }
+    ];
+
     function Assembler() {
       var op, _i, _j, _len, _len1, _ref, _ref1;
+      this.mPc = 0;
       this.mText = "";
       this.mLabels = {};
-      this.mPc = 0;
-      this.mInstrs = [];
+      this.mInstrs = {};
       this.mOpcDict = {};
+      this.mSect = ".text";
       _ref = Instr.BASIC_OPS;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         op = _ref[_i];
@@ -11234,15 +11309,22 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     }
 
     Assembler.prototype.label = function(name, addr) {
-      return this.mLabels[name] = addr;
+      if (!(this.mLabels[this.mSect] != null)) {
+        this.mLabels[this.mSect] = {};
+      }
+      return this.mLabels[this.mSect][name] = addr;
     };
 
     Assembler.prototype.lookup = function(name) {
-      return this.mLabels[name];
+      return this.mLabels[this.mSect][name];
     };
 
     Assembler.prototype.defined = function(name) {
       return lookup(name) != null;
+    };
+
+    Assembler.prototype.section = function(s) {
+      return this.mSect = s;
     };
 
     Assembler.prototype.incPc = function() {
@@ -11250,174 +11332,43 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     };
 
     Assembler.prototype.processValue = function(val) {
-      var arr_regex, ilit_regex, ireg_regex, lit_regex, match, n, r, reg_regex, regid, success;
+      var match, vp, _i, _len, _ref;
       val = val.trim();
-      reg_regex = /^([a-zA-Z_]+)/;
-      ireg_regex = /^\[\s*([a-zA-Z]+|\d+)\s*\]/;
-      lit_regex = /^(0[xX][0-9a-fA-F]+|\d+)/;
-      ilit_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]/;
-      arr_regex = /^\[\s*([0-9a-zA-Z]+)\s*\+\s*([0-9a-zA-Z]+)\s*\]/;
-      success = function(val) {
-        return {
-          result: "success",
-          value: val
-        };
-      };
-      if (match = val.match(reg_regex)) {
-        switch (match[1]) {
-          case "POP":
-            return success(new RawValue(this, 0x18));
-          case "PEEK":
-            return success(new RawValue(this, 0x19));
-          case "PUSH":
-            return success(new RawValue(this, 0x1a));
-          case "SP":
-            return success(new RawValue(this, 0x1b));
-          case "PC":
-            return success(new RawValue(this, 0x1c));
-          case "O":
-            return success(new RawValue(this, 0x1d));
-          default:
-            regid = dasm.Disasm.REG_DISASM.indexOf(match[1]);
-            if (regid === -1) {
-              return success(new LitValue(this, match[1]));
-            } else {
-              return success(new RegValue(this, regid));
-            }
+      match = void 0;
+      _ref = Assembler.VALUE_PARSERS;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        vp = _ref[_i];
+        if (match = val.match(vp.match)) {
+          return this[vp.f](match);
         }
-      } else if (match = val.match(ireg_regex)) {
-        regid = dasm.Disasm.REG_DISASM.indexOf(match[1]);
-        if (regid === -1) {
-          return success(new MemValue(this, void 0, new LitValue(this, match[1])));
-        } else {
-          return success(new MemValue(this, regid, void 0));
-        }
-      } else if (match = val.match(lit_regex)) {
-        return success(new LitValue(this, parseInt(match[1])));
-      } else if (match = val.match(ilit_regex)) {
-        n = parseInt(match[1]);
-        return success(new MemValue(this, void 0, new LitValue(this, n)));
-      } else if (match = val.match(arr_regex)) {
-        if ((r = dasm.Disasm.REG_DISASM.indexOf(match[2])) !== -1) {
-          return success(new MemValue(this, r, new LitValue(this, match[1])));
-        }
-        if ((r = dasm.Disasm.REG_DISASM.indexOf(match[1])) !== -1) {
-          return success(new MemValue(this, r, new LitValue(this, match[2])));
-        } else {
-          console.log("match[1]: " + match[1]);
-          console.log("match[2]: " + match[2]);
-          (void 0).crash();
-          return {
-            result: "fail",
-            message: "Unmatched value " + val
-          };
-        }
-        return success(new MemValue(this, r, new LitValue(this, n)));
-      } else {
-        return r = {
-          result: "fail",
-          message: "Unmatched value " + val
-        };
       }
+      return console.log("Unmatched value: " + val);
     };
 
     Assembler.prototype.processLine = function(line) {
-      var adv_regex, basic_regex, c, enc, input, match, n, opc, r, str_regex, tok, toks, valA, valB, _i, _j, _len, _len1, _ref, _ref1, _ref2;
-      input = line.trim();
-      line = line.split(";")[0].toUpperCase().trim();
-      if (line === "") {
-        return r = {
-          result: "success"
-        };
+      var lp, match, _i, _len, _ref;
+      line = line.trim();
+      match = void 0;
+      _ref = Assembler.LINE_PARSERS;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        lp = _ref[_i];
+        if (match = line.match(lp.match)) {
+          return this[lp.f](match);
+        }
       }
-      basic_regex = /(\w+)\s+([^,]+)\s*,\s*([^,]+)/;
-      adv_regex = /(\w+)\s+([^,]+)/;
-      str_regex = /"([^"]*)"/;
-      toks = line.match(/[^ \t]+/g);
-      if (input[0] === ":") {
-        toks = input.match(/[^ \t]+/g);
-        this.label(toks[0].slice(1).toUpperCase(), this.mPc);
-        return this.processLine(toks.slice(1).join(" "));
-      } else if (line[0] === ";") {
-        return {
-          result: "success"
-        };
-      } else if (toks[0] === "DAT") {
-        toks = input.match(/[^ \t]+/g).slice(1).join(" ").split(",");
-        for (_i = 0, _len = toks.length; _i < _len; _i++) {
-          tok = toks[_i];
-          tok = tok.trim();
-          if (tok[0] === ";") {
-            break;
-          }
-          if (match = tok.match(str_regex)) {
-            _ref = match[1];
-            for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
-              c = _ref[_j];
-              this.mInstrs.push(new Data(this, c.charCodeAt(0)));
-            }
-          } else if ((n = parseInt(tok)) != null) {
-            this.mInstrs.push(new Data(this, n));
-          } else {
-            console.log("Bad Data String: '" + tok + "'");
-          }
-        }
-        return {
-          result: "success"
-        };
-      } else if (match = line.match(basic_regex)) {
-        _ref1 = match.slice(1, 4), opc = _ref1[0], valA = _ref1[1], valB = _ref1[2];
-        if (!(this.mOpcDict[opc] != null)) {
-          return r = {
-            result: "fail",
-            message: "Unknown Opcode: " + opc
-          };
-        }
-        enc = this.mOpcDict[opc].op;
-        this.incPc();
-        valA = this.processValue(valA);
-        if (valA.result !== "success") {
-          return valA;
-        }
-        valB = this.processValue(valB);
-        if (valB.result !== "success") {
-          return valB;
-        }
-        this.mInstrs.push(new Instruction(this, enc, [valA.value, valB.value]));
-        return r = {
-          result: "success"
-        };
-      } else if (match = line.match(adv_regex)) {
-        _ref2 = match.slice(1, 3), opc = _ref2[0], valA = _ref2[1];
-        if (!(this.mOpcDict[opc] != null)) {
-          return r = {
-            result: "fail",
-            message: "Unknown Opcode: " + opc
-          };
-        }
-        enc = this.mOpcDict[opc].op;
-        this.incPc();
-        valB = this.processValue(valA);
-        if (valB.result !== "success") {
-          return valB;
-        }
-        valA = new RawValue(this, enc);
-        this.mInstrs.push(new Instruction(this, 0, [valA, valB.value]));
-        return r = {
-          result: "success"
-        };
-      } else {
-        return r = {
-          result: "fail",
-          source: line,
-          message: "Syntax Error"
-        };
-      }
+      return console.log("Unmatched line: " + line);
     };
 
-    Assembler.prototype.emit = function(stream) {
+    Assembler.prototype.out = function(i) {
+      if (!(this.mInstrs[this.mSect] != null)) {
+        this.mInstrs[this.mSect] = [];
+      }
+      return this.mInstrs[this.mSect].push(i);
+    };
+
+    Assembler.prototype.emit = function(sec, stream) {
       var i, _i, _len, _ref, _results;
-      _ref = this.mInstrs;
+      _ref = this.mInstrs[sec];
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         i = _ref[_i];
@@ -11427,43 +11378,180 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     };
 
     Assembler.prototype.assemble = function(text) {
-      var index, l, lines, prog, r, state, _i, _len;
-      prog = [];
+      var i, l, lines, prog, r, s, sections, _i, _len, _ref;
       lines = text.split("\n");
-      index = 1;
       for (_i = 0, _len = lines.length; _i < _len; _i++) {
         l = lines[_i];
-        state = this.processLine(l);
-        if (state.result !== "success") {
-          state.line = index;
-          return state;
-        }
-        index++;
+        this.processLine(l);
       }
-      this.emit(prog);
-      r = {
+      sections = [];
+      _ref = this.mInstrs;
+      for (s in _ref) {
+        i = _ref[s];
+        prog = [];
+        this.emit(s, prog);
+        sections.push({
+          name: s,
+          data: prog,
+          sym: this.mLabels[s]
+        });
+      }
+      return r = {
         format: "job",
         version: 0.1,
         source: "Tims Assembler",
-        file: "??",
-        sections: [
-          {
-            name: ".text",
-            data: prog,
-            sym: this.mLabels
-          }
-        ]
-      };
-      return {
-        result: "success",
-        code: r
+        sections: sections
       };
     };
 
     Assembler.prototype.assembleAndLink = function(text) {
       var exe, job;
       job = this.assemble(text);
-      return exe = JobLinker.link([job.code]);
+      return exe = JobLinker.link([job]);
+    };
+
+    Assembler.prototype.lpEmpty = function(match) {};
+
+    Assembler.prototype.lpDirect = function(match) {};
+
+    Assembler.prototype.lpDat = function(match) {
+      var c, n, tok, toks, _i, _len, _results;
+      toks = match[0].match(/[^ \t]+/g).slice(1).join(" ").split(",");
+      _results = [];
+      for (_i = 0, _len = toks.length; _i < _len; _i++) {
+        tok = toks[_i];
+        tok = tok.trim();
+        if (tok[0] === ";") {
+          break;
+        }
+        if (match = tok.match(Assembler.str_regex)) {
+          _results.push((function() {
+            var _j, _len1, _ref, _results1;
+            _ref = match[1];
+            _results1 = [];
+            for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+              c = _ref[_j];
+              _results1.push(this.out(new Data(this, c.charCodeAt(0))));
+            }
+            return _results1;
+          }).call(this));
+        } else if ((n = parseInt(tok)) != null) {
+          _results.push(this.out(new Data(this, n)));
+        } else {
+          _results.push(console.log("Bad Data String: '" + tok + "'"));
+        }
+      }
+      return _results;
+    };
+
+    Assembler.prototype.lpComment = function(match) {};
+
+    Assembler.prototype.lpLabel = function(match) {
+      var toks;
+      toks = match[0].match(/[^ \t]+/g);
+      this.label(toks[0].slice(1), this.mPc);
+      return this.processLine(toks.slice(1).join(" "));
+    };
+
+    Assembler.prototype.lpIBasic = function(match) {
+      var enc, opc, r, valA, valB, _ref;
+      _ref = match.slice(1, 4), opc = _ref[0], valA = _ref[1], valB = _ref[2];
+      if (!(this.mOpcDict[opc] != null)) {
+        return r = {
+          result: "fail",
+          message: "Unknown Opcode: " + opc
+        };
+      }
+      enc = this.mOpcDict[opc].op;
+      this.incPc();
+      valA = this.processValue(valA);
+      valB = this.processValue(valB);
+      return this.out(new Instruction(this, enc, [valA, valB]));
+    };
+
+    Assembler.prototype.lpIAdv = function(match) {
+      var enc, opc, r, valA, valB, _ref;
+      _ref = match.slice(1, 3), opc = _ref[0], valA = _ref[1];
+      if (!(this.mOpcDict[opc] != null)) {
+        return r = {
+          result: "fail",
+          message: "Unknown Opcode: " + opc
+        };
+      }
+      enc = this.mOpcDict[opc].op;
+      this.incPc();
+      valB = this.processValue(valA);
+      valA = new RawValue(this, enc);
+      return this.out(new Instruction(this, 0, [valA, valB]));
+    };
+
+    Assembler.prototype.vpWord = function(match) {
+      var regid;
+      switch (match[1].toUpperCase()) {
+        case "POP":
+          return new RawValue(this, 0x18);
+        case "PEEK":
+          return new RawValue(this, 0x19);
+        case "PUSH":
+          return new RawValue(this, 0x1a);
+        case "SP":
+          return new RawValue(this, 0x1b);
+        case "PC":
+          return new RawValue(this, 0x1c);
+        case "O":
+          return new RawValue(this, 0x1d);
+        default:
+          regid = dasm.Disasm.REG_DISASM.indexOf(match[1]);
+          if (regid === -1) {
+            return new LitValue(this, match[1]);
+          } else {
+            return new RegValue(this, regid);
+          }
+      }
+    };
+
+    Assembler.prototype.vpIWord = function(match) {
+      var regid;
+      regid = dasm.Disasm.REG_DISASM.indexOf(match[1]);
+      if (regid === -1) {
+        return new MemValue(this, void 0, new LitValue(this, match[1]));
+      } else {
+        return new MemValue(this, regid, void 0);
+      }
+    };
+
+    Assembler.prototype.vpLit = function(match) {
+      return new LitValue(this, parseInt(match[1]));
+    };
+
+    Assembler.prototype.vpILit = function(match) {
+      var n;
+      n = parseInt(match[1]);
+      return new MemValue(this, void 0, new LitValue(this, n));
+    };
+
+    Assembler.prototype.vpArr = function(match) {
+      var r;
+      if ((r = dasm.Disasm.REG_DISASM.indexOf(match[2])) !== -1) {
+        return new MemValue(this, r, new LitValue(this, match[1]));
+      }
+      if ((r = dasm.Disasm.REG_DISASM.indexOf(match[1])) !== -1) {
+        return new MemValue(this, r, new LitValue(this, match[2]));
+      } else {
+        return console.log("Unmatched value " + val);
+      }
+    };
+
+    Assembler.prototype.dirGlobal = function(line) {
+      return;
+    };
+
+    Assembler.prototype.dirText = function(_) {
+      return this.section(".text");
+    };
+
+    Assembler.prototype.dirData = function(_) {
+      return this.section(".data");
     };
 
     return Assembler;

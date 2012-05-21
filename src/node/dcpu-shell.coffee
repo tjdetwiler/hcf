@@ -48,7 +48,7 @@ class Dcpu16Shell extends cmd.Cmd
     cpu = @dcpu
     fs.readFile fn, "utf8", (err, data) ->
       if not err
-        cpu.loadBinary eval data
+        cpu.loadBinary eval("(#{data})").sections[0].data
       else
         console.log "Error loading binary"
   help_load: () -> "Loads a binary into memory."
