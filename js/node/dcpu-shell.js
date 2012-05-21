@@ -76,10 +76,7 @@
       return fs.readFile(fn, "utf8", function(err, data) {
         var prog, txt;
         if (!err) {
-          prog = asm.assemble(data);
-          if (prog.result !== "success") {
-            console.log("ERROR: Line: " + prog.line + ": " + prog.message);
-          }
+          prog = asm.assembleAndLink(data);
           if (toks[1] != null) {
             txt = JSON.stringify(prog);
             return fs.writeFile(toks[1], txt, function(err) {
@@ -88,7 +85,7 @@
               }
             });
           } else {
-            return cpu.loadBinary(prog.code);
+            return cpu.loadBinary(prog.sections[0].data);
           }
         } else {
           return console.log("Error assembling file");

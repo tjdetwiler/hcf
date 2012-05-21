@@ -28,6 +28,7 @@ class Dcpu16
     @mMappedRegions = []
     @mRegStorage    = []
     @mIStream = new IStream @mMemory
+    @mPendInstr = null
     @mRegAccess = [
       @_regGen(Value.REG_A), @_regGen(Value.REG_B), @_regGen(Value.REG_C),
       @_regGen(Value.REG_X), @_regGen(Value.REG_Y), @_regGen(Value.REG_Z),
@@ -45,7 +46,9 @@ class Dcpu16
       if op?
         name = "_exec_#{op.id.toLowerCase()}"
         @mAdvExecutors[op.op] = name
+    @mBreakpoints = []
     @mDevices = []
+    @mRunTimer = null
     @reset()
 
   #
@@ -62,7 +65,6 @@ class Dcpu16
     @regSP 0xffff
     for d in @mDevices
       d.reset()
-
 
   #
   # Event setter functions.
@@ -167,6 +169,24 @@ class Dcpu16
     @regPC base
 
   #
+  # Runs the CPU at approx 100KHz
+  #
+  run: () ->
+    cpu = this
+    cb = () ->
+      for i in [0..10001]
+        cpu.step()
+    if @mRunTimer then clearInterval @timer
+    @mRunTimer = setInterval cb, 50
+
+  #
+  # Stops continuous execution caused by a call to run()
+  #
+  stop: () ->
+    if @mRunTimer
+      clearInterval @mRunTimer
+      @mRunTimer = null
+  #
   # Execution Control
   #
   # step: Execute one instruction
@@ -174,21 +194,53 @@ class Dcpu16
   # stop: Stops the CPU.
   #
   step: () ->
-    i = new Instr @mIStream
+    #
+    # A pending instruction is one that has already been decoded, but
+    # not yet executed.
+    #
+    if @mPendInstr
+      i = @mPendInstr
+      @mPendInstr = null
+    else
+      i = new Instr @mIStream
 
+    #
+    # Check for execution breakpoint
+    #
+    if f = @mBreakpoints[i.addr()]
+      @stop()
+      @mPendInstr = i
+      return f(i.addr(), "x")
+
+    #
+    # Execute and fire events
+    #
     if @mPreExec? then @mPreExec i
     @exec i
     if @mPostExec? then @mPostExec i
 
     #
     # If we've failed a conditional instruction, we should keep skipping
-    # instructions as long as they are conditionals. This is indicated
-    # by the "cond" property of the opcode object.
+    # instructions as long as they are conditionals.
     #
     while @mCCFail
       i = new Instr @mIStream
       @mCCFail = i.cond()
       if @mCondFail? then @mCondFail i
+
+  #
+  # Sets an execution breakpoint
+  #
+  # a: Address of the instruction to break on
+  # f: Callback when breakpoint is hit. Should be of the form:
+  #     (addr, type) ->
+  #   addr is breakpoint address
+  #   type is "r", "w", or "x" for read/write/execute
+  #
+  # TODO: Support r/w breakpoints
+  #
+  breakpoint: (a,f) ->
+    @mBreakpoints[a] = f
 
   exec: (i) ->
     opc = i.opc()

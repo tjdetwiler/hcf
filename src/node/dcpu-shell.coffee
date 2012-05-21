@@ -59,14 +59,13 @@ class Dcpu16Shell extends cmd.Cmd
     cpu = @dcpu
     fs.readFile fn, "utf8", (err, data) ->
       if not err
-        prog = asm.assemble data
-        if prog.result isnt "success"
-          console.log "ERROR: Line: #{prog.line}: #{prog.message}"
+        prog = asm.assembleAndLink data
         if toks[1]?
           txt = JSON.stringify prog
-          fs.writeFile toks[1], txt, (err) -> if err then console.log "Error writing out binary"
+          fs.writeFile toks[1], txt, (err) ->
+            if err then console.log "Error writing out binary"
         else
-          cpu.loadBinary prog.code
+          cpu.loadBinary prog.sections[0].data
       else
         return console.log "Error assembling file"
   

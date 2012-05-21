@@ -76,7 +76,9 @@ class LitValue
       return @mLit
 
   emit: (stream) ->
-    if @mLit > 0x1e or @isLabel()
+    if @isLabel()
+      stream.push @mLit
+    else if @mLit > 0x1e or @isLabel()
       stream.push @value()
 
   encode: () ->
@@ -114,6 +116,48 @@ class Data
     @mData = dat
 
   emit: (stream) -> stream.push @mData
+
+#
+# JSON Object File Linker
+#
+class JobLinker
+  @mergeSyms: (a, b, o) ->
+    for k,v of b
+      if a[k]?
+        console.log "Warning, redefinition of symbol '#{k}'"
+      else
+        a[k] = v+o
+
+  @link: (jobs) ->
+    code = []
+    syms = {}
+
+    #
+    # Merge sections and symbols
+    #
+    for job in jobs
+      console.log syms
+      console.log job.sections[0].sym
+      @mergeSyms(syms, job.sections[0].sym, code.length)
+      code = code.concat job.sections[0].data
+
+    #
+    # Resolve
+    #
+    for v,i in code
+      if (addr = syms[v])?
+        code[i] = addr
+      else if isNaN v
+        console.log "Error: Undefined Symbol '#{v}'"
+
+    return r =
+      format: "job"
+      version: 0.1
+      source: "Tims Linker"
+      file: "??"
+      sections : [
+        {name: ".text", data: code, sym: syms}
+      ]
 
 class Assembler
   constructor: () ->
@@ -294,8 +338,19 @@ class Assembler
         return state
       index++
     @emit prog
-    return r =
-      result: "success"
-      code: prog
+    r =
+      format: "job"
+      version: 0.1
+      source: "Tims Assembler"
+      file: "??"
+      sections: [
+        {name: ".text", data: prog, sym: @mLabels}
+      ]
+    return {result: "success", code: r}
+
+  assembleAndLink: (text) ->
+    job = @assemble text
+    exe = JobLinker.link [job.code]
 
 exports.Assembler = Assembler
+exports.JobLinker = JobLinker

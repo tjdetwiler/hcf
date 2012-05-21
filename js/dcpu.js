@@ -28,6 +28,7 @@
       this.mMappedRegions = [];
       this.mRegStorage = [];
       this.mIStream = new IStream(this.mMemory);
+      this.mPendInstr = null;
       this.mRegAccess = [
         this._regGen(Value.REG_A), this._regGen(Value.REG_B), this._regGen(Value.REG_C), this._regGen(Value.REG_X), this._regGen(Value.REG_Y), this._regGen(Value.REG_Z), this._regGen(Value.REG_I), this._regGen(Value.REG_J), function(v) {
           return cpu.mIStream.index(v);
@@ -51,7 +52,9 @@
           this.mAdvExecutors[op.op] = name;
         }
       }
+      this.mBreakpoints = [];
       this.mDevices = [];
+      this.mRunTimer = null;
       this.reset();
     }
 
@@ -237,9 +240,43 @@
       return this.regPC(base);
     };
 
+    Dcpu16.prototype.run = function() {
+      var cb, cpu;
+      cpu = this;
+      cb = function() {
+        var i, _i, _results;
+        _results = [];
+        for (i = _i = 0; _i <= 10001; i = ++_i) {
+          _results.push(cpu.step());
+        }
+        return _results;
+      };
+      if (this.mRunTimer) {
+        clearInterval(this.timer);
+      }
+      return this.mRunTimer = setInterval(cb, 50);
+    };
+
+    Dcpu16.prototype.stop = function() {
+      if (this.mRunTimer) {
+        clearInterval(this.mRunTimer);
+        return this.mRunTimer = null;
+      }
+    };
+
     Dcpu16.prototype.step = function() {
-      var i, _results;
-      i = new Instr(this.mIStream);
+      var f, i, _results;
+      if (this.mPendInstr) {
+        i = this.mPendInstr;
+        this.mPendInstr = null;
+      } else {
+        i = new Instr(this.mIStream);
+      }
+      if (f = this.mBreakpoints[i.addr()]) {
+        this.stop();
+        this.mPendInstr = i;
+        return f(i.addr(), "x");
+      }
       if (this.mPreExec != null) {
         this.mPreExec(i);
       }
@@ -258,6 +295,10 @@
         }
       }
       return _results;
+    };
+
+    Dcpu16.prototype.breakpoint = function(a, f) {
+      return this.mBreakpoints[a] = f;
     };
 
     Dcpu16.prototype.exec = function(i) {
