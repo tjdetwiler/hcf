@@ -80,13 +80,13 @@
     };
 
     DcpuWebapp.prototype.assemble = function() {
-      var state;
+      var exe;
       this.mAsm = new asm.Assembler();
-      state = this.mAsm.assemble(window.editor.getValue());
-      if (state.result !== "success") {
-        this.error("Error: Line " + state.line + ": " + state.message);
+      exe = this.mAsm.assembleAndLink(window.editor.getValue());
+      if (exe.result !== "success") {
+        this.error("Error: Line " + exe.line + ": " + exe.message);
       }
-      this.mCpu.loadBinary(state.code);
+      this.mCpu.loadJOB(exe);
       this.mCpu.regPC(0);
       this.dumpMemory();
       return this.updateRegs();

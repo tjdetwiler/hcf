@@ -228,6 +228,7 @@
       var addr, code, i, job, r, syms, v, _i, _j, _len, _len1;
       code = [];
       syms = {};
+      console.log(jobs[0].sections[0]);
       for (_i = 0, _len = jobs.length; _i < _len; _i++) {
         job = jobs[_i];
         this.mergeSyms(syms, job.sections[0].sym, code.length);
@@ -288,7 +289,7 @@
         match: /^\..*/,
         f: 'lpDirect'
       }, Assembler.LP_DAT = {
-        match: /^[dD][aA][tT]/,
+        match: /^[dD][aA][tT].*/,
         f: 'lpDat'
       }, Assembler.LP_COMMENT = {
         match: /^;.*/,
@@ -365,6 +366,7 @@
     }
 
     Assembler.prototype.label = function(name, addr) {
+      console.log("labeling " + name);
       if (!(this.mLabels[this.mSect] != null)) {
         this.mLabels[this.mSect] = {};
       }
@@ -416,6 +418,7 @@
     };
 
     Assembler.prototype.out = function(i) {
+      console.log(i);
       if (!(this.mInstrs[this.mSect] != null)) {
         this.mInstrs[this.mSect] = [];
       }
@@ -428,6 +431,7 @@
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         i = _ref[_i];
+        console.log(i.mOpc);
         _results.push(i.emit(stream));
       }
       return _results;
@@ -472,6 +476,7 @@
 
     Assembler.prototype.lpDat = function(match) {
       var c, n, tok, toks, _i, _len, _results;
+      console.log("Dat: " + match[0]);
       toks = match[0].match(/[^ \t]+/g).slice(1).join(" ").split(",");
       _results = [];
       for (_i = 0, _len = toks.length; _i < _len; _i++) {
@@ -511,6 +516,7 @@
 
     Assembler.prototype.lpIBasic = function(match) {
       var enc, opc, r, valA, valB, _ref;
+      console.log("Basic " + match[0]);
       _ref = match.slice(1, 4), opc = _ref[0], valA = _ref[1], valB = _ref[2];
       if (!(this.mOpcDict[opc] != null)) {
         return r = {
@@ -527,6 +533,7 @@
 
     Assembler.prototype.lpIAdv = function(match) {
       var enc, opc, r, valA, valB, _ref;
+      console.log("Adv " + match[0]);
       _ref = match.slice(1, 3), opc = _ref[0], valA = _ref[1];
       if (!(this.mOpcDict[opc] != null)) {
         return r = {

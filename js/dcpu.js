@@ -240,6 +240,10 @@
       return this.regPC(base);
     };
 
+    Dcpu16.prototype.loadJOB = function(job) {
+      return this.loadBinary(job.sections[0].data, 0);
+    };
+
     Dcpu16.prototype.run = function() {
       var cb, cpu;
       cpu = this;

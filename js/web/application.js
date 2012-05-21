@@ -10002,6 +10002,10 @@ require.define("/dcpu.js", function (require, module, exports, __dirname, __file
       return this.regPC(base);
     };
 
+    Dcpu16.prototype.loadJOB = function(job) {
+      return this.loadBinary(job.sections[0].data, 0);
+    };
+
     Dcpu16.prototype.run = function() {
       var cb, cpu;
       cpu = this;
@@ -11172,6 +11176,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
       var addr, code, i, job, r, syms, v, _i, _j, _len, _len1;
       code = [];
       syms = {};
+      console.log(jobs[0].sections[0]);
       for (_i = 0, _len = jobs.length; _i < _len; _i++) {
         job = jobs[_i];
         this.mergeSyms(syms, job.sections[0].sym, code.length);
@@ -11232,7 +11237,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
         match: /^\..*/,
         f: 'lpDirect'
       }, Assembler.LP_DAT = {
-        match: /^[dD][aA][tT]/,
+        match: /^[dD][aA][tT].*/,
         f: 'lpDat'
       }, Assembler.LP_COMMENT = {
         match: /^;.*/,
@@ -11309,6 +11314,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     }
 
     Assembler.prototype.label = function(name, addr) {
+      console.log("labeling " + name);
       if (!(this.mLabels[this.mSect] != null)) {
         this.mLabels[this.mSect] = {};
       }
@@ -11360,6 +11366,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     };
 
     Assembler.prototype.out = function(i) {
+      console.log(i);
       if (!(this.mInstrs[this.mSect] != null)) {
         this.mInstrs[this.mSect] = [];
       }
@@ -11372,6 +11379,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         i = _ref[_i];
+        console.log(i.mOpc);
         _results.push(i.emit(stream));
       }
       return _results;
@@ -11416,6 +11424,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
 
     Assembler.prototype.lpDat = function(match) {
       var c, n, tok, toks, _i, _len, _results;
+      console.log("Dat: " + match[0]);
       toks = match[0].match(/[^ \t]+/g).slice(1).join(" ").split(",");
       _results = [];
       for (_i = 0, _len = toks.length; _i < _len; _i++) {
@@ -11455,6 +11464,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
 
     Assembler.prototype.lpIBasic = function(match) {
       var enc, opc, r, valA, valB, _ref;
+      console.log("Basic " + match[0]);
       _ref = match.slice(1, 4), opc = _ref[0], valA = _ref[1], valB = _ref[2];
       if (!(this.mOpcDict[opc] != null)) {
         return r = {
@@ -11471,6 +11481,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
 
     Assembler.prototype.lpIAdv = function(match) {
       var enc, opc, r, valA, valB, _ref;
+      console.log("Adv " + match[0]);
       _ref = match.slice(1, 3), opc = _ref[0], valA = _ref[1];
       if (!(this.mOpcDict[opc] != null)) {
         return r = {
@@ -12150,13 +12161,13 @@ require.define("/webapp.js", function (require, module, exports, __dirname, __fi
     };
 
     DcpuWebapp.prototype.assemble = function() {
-      var state;
+      var exe;
       this.mAsm = new asm.Assembler();
-      state = this.mAsm.assemble(window.editor.getValue());
-      if (state.result !== "success") {
-        this.error("Error: Line " + state.line + ": " + state.message);
+      exe = this.mAsm.assembleAndLink(window.editor.getValue());
+      if (exe.result !== "success") {
+        this.error("Error: Line " + exe.line + ": " + exe.message);
       }
-      this.mCpu.loadBinary(state.code);
+      this.mCpu.loadJOB(exe);
       this.mCpu.regPC(0);
       this.dumpMemory();
       return this.updateRegs();

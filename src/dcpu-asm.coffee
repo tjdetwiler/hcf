@@ -132,6 +132,8 @@ class JobLinker
     code = []
     syms = {}
 
+    console.log jobs[0].sections[0]
+
     #
     # Merge sections and symbols
     #
@@ -179,7 +181,7 @@ class Assembler
   @LINE_PARSERS = [
     @LP_EMPTY =   {match: /^$/,             f: 'lpEmpty'},
     @LP_DIRECT =  {match: /^\..*/,            f: 'lpDirect'},
-    @LP_DAT =     {match: /^[dD][aA][tT]/,  f: 'lpDat'},
+    @LP_DAT =     {match: /^[dD][aA][tT].*/,  f: 'lpDat'},
     @LP_COMMENT = {match: /^;.*/,             f: 'lpComment'},
     @LP_LABEL =   {match: /^:.*/,             f: 'lpLabel'},
     @LP_ISIMP =   {match: @basic_regex,     f: 'lpIBasic'},
@@ -220,6 +222,7 @@ class Assembler
       if op? then @mOpcDict[op.id.toUpperCase()] = op
 
   label: (name, addr) ->
+    console.log "labeling #{name}"
     if not @mLabels[@mSect]?
       @mLabels[@mSect] = {}
     @mLabels[@mSect][name] = addr
@@ -246,12 +249,14 @@ class Assembler
     console.log "Unmatched line: #{line}"
 
   out: (i) ->
+    console.log i
     if not @mInstrs[@mSect]?
       @mInstrs[@mSect] = []
     @mInstrs[@mSect].push i
 
   emit: (sec, stream) ->
     for i in @mInstrs[sec]
+      console.log i.mOpc
       i.emit stream 
 
   assemble: (text) ->
@@ -281,6 +286,7 @@ class Assembler
   lpEmpty:  (match) ->
   lpDirect: (match) ->
   lpDat:    (match) ->
+    console.log "Dat: #{match[0]}"
     toks = match[0].match(/[^ \t]+/g)[1..].join(" ").split(",")
     for tok in toks
       tok = tok.trim()
@@ -301,6 +307,7 @@ class Assembler
     @processLine (toks[1..].join " ")
 
   lpIBasic: (match) ->
+    console.log "Basic #{match[0]}"
     [opc, valA, valB] = match[1..3]
     if not @mOpcDict[opc]?
       return r =
@@ -313,6 +320,7 @@ class Assembler
     @out new Instruction(@, enc, [valA, valB])
 
   lpIAdv:   (match) ->
+    console.log "Adv #{match[0]}"
     [opc, valA] = match[1..2]
     if not @mOpcDict[opc]?
       return r =

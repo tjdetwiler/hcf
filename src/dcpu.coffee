@@ -168,6 +168,10 @@ class Dcpu16
     @mMemory[base+i] = x for x,i in bin
     @regPC base
 
+  loadJOB: (job) ->
+    #TODO: support multiple sections
+    @loadBinary job.sections[0].data, 0
+
   #
   # Runs the CPU at approx 100KHz
   #

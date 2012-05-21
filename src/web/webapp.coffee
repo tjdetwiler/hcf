@@ -82,10 +82,10 @@ class DcpuWebapp
   #
   assemble: () ->
     @mAsm = new asm.Assembler()
-    state = @mAsm.assemble window.editor.getValue()
-    if state.result isnt "success"
-      @error "Error: Line #{state.line}: #{state.message}"
-    @mCpu.loadBinary state.code
+    exe = @mAsm.assembleAndLink window.editor.getValue()
+    if exe.result isnt "success"
+      @error "Error: Line #{exe.line}: #{exe.message}"
+    @mCpu.loadJOB exe
     @mCpu.regPC 0
     @dumpMemory()
     @updateRegs()
