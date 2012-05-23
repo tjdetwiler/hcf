@@ -132,8 +132,6 @@ class JobLinker
     code = []
     syms = {}
 
-    console.log jobs[0].sections[0]
-
     #
     # Merge sections and symbols
     #
@@ -154,7 +152,6 @@ class JobLinker
       format: "job"
       version: 0.1
       source: "Tims Linker"
-      file: "??"
       sections : [
         {name: ".text", data: code, sym: syms}
       ]
@@ -168,9 +165,10 @@ class Assembler
   @lit_regex = ///^(0[xX][0-9a-fA-F]+|\d+)///
   @ilit_regex = ///^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]///
   @arr_regex = ///^\[\s*([0-9a-zA-Z]+)\s*\+\s*([0-9a-zA-Z]+)\s*\]///
+  @str_regex = ///"([^"]*)"///
   @basic_regex = ///(\w+)\s+([^,]+)\s*,\s*([^,]+)///
   @adv_regex = ///(\w+)\s+([^,]+)///
-  @str_regex = ///"([^"]*)"///
+  @dir_regex = ///(\.[a-zA-Z0-9]+)(.*)///
 
   #
   # Line Parsers.
@@ -180,10 +178,10 @@ class Assembler
   #
   @LINE_PARSERS = [
     @LP_EMPTY =   {match: /^$/,             f: 'lpEmpty'},
-    @LP_DIRECT =  {match: /^\..*/,            f: 'lpDirect'},
-    @LP_DAT =     {match: /^[dD][aA][tT].*/,  f: 'lpDat'},
-    @LP_COMMENT = {match: /^;.*/,             f: 'lpComment'},
-    @LP_LABEL =   {match: /^:.*/,             f: 'lpLabel'},
+    @LP_DIRECT =  {match: @dir_regex,       f: 'lpDirect'},
+    @LP_DAT =     {match: /^[dD][aA][tT].*/,f: 'lpDat'},
+    @LP_COMMENT = {match: /^;.*/,           f: 'lpComment'},
+    @LP_LABEL =   {match: /^:.*/,           f: 'lpLabel'},
     @LP_ISIMP =   {match: @basic_regex,     f: 'lpIBasic'},
     @LP_IADV =    {match: @adv_regex,       f: 'lpIAdv'},
   ]
@@ -213,6 +211,7 @@ class Assembler
     @mPc = 0
     @mText = ""
     @mLabels = {}
+    @mExports = {}
     @mInstrs = {}
     @mOpcDict = {}
     @mSect = ".text"
@@ -222,19 +221,19 @@ class Assembler
       if op? then @mOpcDict[op.id.toUpperCase()] = op
 
   label: (name, addr) ->
-    console.log "labeling #{name}"
     if not @mLabels[@mSect]?
       @mLabels[@mSect] = {}
     @mLabels[@mSect][name] = addr
-
+  export: (name, addr) ->
+    if not @mExports[@mSect]?
+      @mExports[@mSect] = {}
+    @mExports[@mSect][name] = addr
   lookup:      (name) -> @mLabels[@mSect][name]
   defined:     (name) -> lookup(name)?
-  section:        (s) -> @mSect = s
   incPc:           () -> ++@mPc
 
   processValue: (val) ->
     val = val.trim()
-    match = undefined
     for vp in Assembler.VALUE_PARSERS
       if match = val.match vp.match
         return this[vp.f] match
@@ -242,21 +241,18 @@ class Assembler
 
   processLine: (line) ->
     line = line.trim()
-    match = undefined
     for lp in Assembler.LINE_PARSERS
       if match = line.match lp.match
         return this[lp.f] match
     console.log "Unmatched line: #{line}"
 
   out: (i) ->
-    console.log i
     if not @mInstrs[@mSect]?
       @mInstrs[@mSect] = []
     @mInstrs[@mSect].push i
 
   emit: (sec, stream) ->
     for i in @mInstrs[sec]
-      console.log i.mOpc
       i.emit stream 
 
   assemble: (text) ->
@@ -283,10 +279,34 @@ class Assembler
     job = @assemble text
     exe = JobLinker.link [job]
 
+
+  #############################################################################
+  # Line Parsers
+  #############################################################################
+  #
+  # Matches an empty line (no action)
+  #
   lpEmpty:  (match) ->
+
+  #
+  # Matches a directive ('.<directive>')
+  #
   lpDirect: (match) ->
+    name = match[1].toUpperCase()
+    console.log "Directive '#{name}'"
+    for d in Assembler.DIRECTS
+      if name == d.id.toUpperCase()
+        return this[d.f] match
+
+  #
+  # Matches a comment line
+  #
+  lpComment:(match) ->
+
+  #
+  # Matches the 'DAT' pseudo-op
+  #
   lpDat:    (match) ->
-    console.log "Dat: #{match[0]}"
     toks = match[0].match(/[^ \t]+/g)[1..].join(" ").split(",")
     for tok in toks
       tok = tok.trim()
@@ -299,39 +319,54 @@ class Assembler
       else
         console.log "Bad Data String: '#{tok}'"
 
-  lpComment:(match) ->
 
+  #
+  # Matches a Labeled line (:label)
+  #
+  # Note this parser must recurse since it it legal to have instructions on the
+  # same line as a label
+  #
+  # Ex:
+  # :crash set pc, crash
+  #
   lpLabel:  (match) ->
     toks = match[0].match /[^ \t]+/g
     @label toks[0][1..], @mPc
     @processLine (toks[1..].join " ")
 
+  #
+  # Matches a basic (2-value) instruction
+  #
   lpIBasic: (match) ->
-    console.log "Basic #{match[0]}"
     [opc, valA, valB] = match[1..3]
-    if not @mOpcDict[opc]?
-      return r =
-        result: "fail"
-        message: "Unknown Opcode: #{opc}"
-    enc = @mOpcDict[opc].op
+    enc = @mOpcDict[opc.toUpperCase()].op
     @incPc()
     valA = @processValue valA
     valB = @processValue valB
     @out new Instruction(@, enc, [valA, valB])
 
+  #
+  # Matches an advanced (1-value) instruction
+  #
   lpIAdv:   (match) ->
-    console.log "Adv #{match[0]}"
     [opc, valA] = match[1..2]
-    if not @mOpcDict[opc]?
-      return r =
-        result: "fail"
-        message: "Unknown Opcode: #{opc}"
-    enc = @mOpcDict[opc].op
+
+    #
+    # 'b' is a pseudo-instruction to let the linker attempt to insert a
+    # relative branch with 'add pc, imm' or 'sub pc, imm'. This will mean one
+    # word shorter instructions for jumps within +/- 30B.
+    #
+    if opc == 'b'
+      return console.log "Branch #{valA}"
+    enc = @mOpcDict[opc.toUpperCase()].op
     @incPc()
     valB = @processValue valA
     valA = new RawValue @, enc
     @out new Instruction(@, 0, [valA,valB])
 
+  #############################################################################
+  # Value Parsers
+  #############################################################################
   #
   # Any word-like matches. This means all of the following are handled:
   #   Regs (A,B,C,X,Y,Z,EX,PC,SP)
@@ -345,41 +380,64 @@ class Assembler
       when "PUSH"   then new RawValue @, 0x1a
       when "SP"     then new RawValue @, 0x1b
       when "PC"     then new RawValue @, 0x1c
-      when "O"      then new RawValue @, 0x1d
+      when "EX"     then new RawValue @, 0x1d
       else
-        regid = dasm.Disasm.REG_DISASM.indexOf match[1]
+        regid = dasm.Disasm.REG_DISASM.indexOf match[1].toUpperCase()
         if regid == -1
           return new LitValue(@, match[1])
         else
           return new RegValue(@, regid)
 
+  #
+  # Any indirect word-like match
+  #   [REG]
+  #   [LABEL]
+  #
   vpIWord: (match) ->
-    regid = dasm.Disasm.REG_DISASM.indexOf match[1]
+    regid = dasm.Disasm.REG_DISASM.indexOf match[1].toUpperCase()
     if regid == -1
       return new MemValue(@, undefined, new LitValue(@, match[1]))
     else
       return new MemValue(@, regid, undefined)
 
+  #
+  # Matches a literal value (decimal or hex)
+  #
   vpLit:  (match) ->
     new LitValue(@, parseInt match[1])
 
+  #
+  # Matches an indirect literal value (decimal or hex)
+  #
   vpILit: (match) ->
     n = parseInt match[1]
     new MemValue(@, undefined, new LitValue(@, n))
 
+  #
+  # Matches the array-indexing value
+  #   [WORD+REG]
+  #   [REG+WORD]
+  #
+  # If WORD is not a literal value (decimal or hex), then it is assumed to be
+  # a label.
+  #
   vpArr:  (match) ->
-    if (r = dasm.Disasm.REG_DISASM.indexOf match[2]) != -1
+    if (r = dasm.Disasm.REG_DISASM.indexOf match[2].toUpperCase()) != -1
       return new MemValue(@, r, new LitValue(@, match[1]))
-    if (r = dasm.Disasm.REG_DISASM.indexOf match[1]) != -1
+    if (r = dasm.Disasm.REG_DISASM.indexOf match[1].toUpperCase()) != -1
       return new MemValue(@, r, new LitValue(@, match[2]))
     else
-      console.log "Unmatched value #{val}"
+      console.log "Unmatched value #{match[0]}"
 
-  dirGlobal: (line) -> undefined
-
-  dirText: (_) -> @section ".text"
-
-  dirData: (_) -> @section ".data"
+  #############################################################################
+  # Directive Handlers
+  #############################################################################
+  #
+  # Matches the global directive, which exports a symbol
+  #
+  dirGlobal: (match) ->
+    console.log "exporting '#{match[2]}'"
+    @export match[2]
 
 exports.Assembler = Assembler
 exports.JobLinker = JobLinker

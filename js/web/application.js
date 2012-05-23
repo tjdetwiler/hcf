@@ -11176,7 +11176,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
       var addr, code, i, job, r, syms, v, _i, _j, _len, _len1;
       code = [];
       syms = {};
-      console.log(jobs[0].sections[0]);
       for (_i = 0, _len = jobs.length; _i < _len; _i++) {
         job = jobs[_i];
         this.mergeSyms(syms, job.sections[0].sym, code.length);
@@ -11194,7 +11193,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
         format: "job",
         version: 0.1,
         source: "Tims Linker",
-        file: "??",
         sections: [
           {
             name: ".text",
@@ -11223,18 +11221,20 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
 
     Assembler.arr_regex = /^\[\s*([0-9a-zA-Z]+)\s*\+\s*([0-9a-zA-Z]+)\s*\]/;
 
+    Assembler.str_regex = /"([^"]*)"/;
+
     Assembler.basic_regex = /(\w+)\s+([^,]+)\s*,\s*([^,]+)/;
 
     Assembler.adv_regex = /(\w+)\s+([^,]+)/;
 
-    Assembler.str_regex = /"([^"]*)"/;
+    Assembler.dir_regex = /(\.[a-zA-Z0-9]+)(.*)/;
 
     Assembler.LINE_PARSERS = [
       Assembler.LP_EMPTY = {
         match: /^$/,
         f: 'lpEmpty'
       }, Assembler.LP_DIRECT = {
-        match: /^\..*/,
+        match: Assembler.dir_regex,
         f: 'lpDirect'
       }, Assembler.LP_DAT = {
         match: /^[dD][aA][tT].*/,
@@ -11294,6 +11294,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
       this.mPc = 0;
       this.mText = "";
       this.mLabels = {};
+      this.mExports = {};
       this.mInstrs = {};
       this.mOpcDict = {};
       this.mSect = ".text";
@@ -11314,11 +11315,17 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     }
 
     Assembler.prototype.label = function(name, addr) {
-      console.log("labeling " + name);
       if (!(this.mLabels[this.mSect] != null)) {
         this.mLabels[this.mSect] = {};
       }
       return this.mLabels[this.mSect][name] = addr;
+    };
+
+    Assembler.prototype["export"] = function(name, addr) {
+      if (!(this.mExports[this.mSect] != null)) {
+        this.mExports[this.mSect] = {};
+      }
+      return this.mExports[this.mSect][name] = addr;
     };
 
     Assembler.prototype.lookup = function(name) {
@@ -11329,10 +11336,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
       return lookup(name) != null;
     };
 
-    Assembler.prototype.section = function(s) {
-      return this.mSect = s;
-    };
-
     Assembler.prototype.incPc = function() {
       return ++this.mPc;
     };
@@ -11340,7 +11343,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     Assembler.prototype.processValue = function(val) {
       var match, vp, _i, _len, _ref;
       val = val.trim();
-      match = void 0;
       _ref = Assembler.VALUE_PARSERS;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         vp = _ref[_i];
@@ -11354,7 +11356,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     Assembler.prototype.processLine = function(line) {
       var lp, match, _i, _len, _ref;
       line = line.trim();
-      match = void 0;
       _ref = Assembler.LINE_PARSERS;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         lp = _ref[_i];
@@ -11366,7 +11367,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     };
 
     Assembler.prototype.out = function(i) {
-      console.log(i);
       if (!(this.mInstrs[this.mSect] != null)) {
         this.mInstrs[this.mSect] = [];
       }
@@ -11379,7 +11379,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         i = _ref[_i];
-        console.log(i.mOpc);
         _results.push(i.emit(stream));
       }
       return _results;
@@ -11420,11 +11419,23 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
 
     Assembler.prototype.lpEmpty = function(match) {};
 
-    Assembler.prototype.lpDirect = function(match) {};
+    Assembler.prototype.lpDirect = function(match) {
+      var d, name, _i, _len, _ref;
+      name = match[1].toUpperCase();
+      console.log("Directive '" + name + "'");
+      _ref = Assembler.DIRECTS;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        d = _ref[_i];
+        if (name === d.id.toUpperCase()) {
+          return this[d.f](match);
+        }
+      }
+    };
+
+    Assembler.prototype.lpComment = function(match) {};
 
     Assembler.prototype.lpDat = function(match) {
       var c, n, tok, toks, _i, _len, _results;
-      console.log("Dat: " + match[0]);
       toks = match[0].match(/[^ \t]+/g).slice(1).join(" ").split(",");
       _results = [];
       for (_i = 0, _len = toks.length; _i < _len; _i++) {
@@ -11453,8 +11464,6 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
       return _results;
     };
 
-    Assembler.prototype.lpComment = function(match) {};
-
     Assembler.prototype.lpLabel = function(match) {
       var toks;
       toks = match[0].match(/[^ \t]+/g);
@@ -11463,16 +11472,9 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     };
 
     Assembler.prototype.lpIBasic = function(match) {
-      var enc, opc, r, valA, valB, _ref;
-      console.log("Basic " + match[0]);
+      var enc, opc, valA, valB, _ref;
       _ref = match.slice(1, 4), opc = _ref[0], valA = _ref[1], valB = _ref[2];
-      if (!(this.mOpcDict[opc] != null)) {
-        return r = {
-          result: "fail",
-          message: "Unknown Opcode: " + opc
-        };
-      }
-      enc = this.mOpcDict[opc].op;
+      enc = this.mOpcDict[opc.toUpperCase()].op;
       this.incPc();
       valA = this.processValue(valA);
       valB = this.processValue(valB);
@@ -11480,16 +11482,12 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
     };
 
     Assembler.prototype.lpIAdv = function(match) {
-      var enc, opc, r, valA, valB, _ref;
-      console.log("Adv " + match[0]);
+      var enc, opc, valA, valB, _ref;
       _ref = match.slice(1, 3), opc = _ref[0], valA = _ref[1];
-      if (!(this.mOpcDict[opc] != null)) {
-        return r = {
-          result: "fail",
-          message: "Unknown Opcode: " + opc
-        };
+      if (opc === 'b') {
+        return console.log("Branch " + valA);
       }
-      enc = this.mOpcDict[opc].op;
+      enc = this.mOpcDict[opc.toUpperCase()].op;
       this.incPc();
       valB = this.processValue(valA);
       valA = new RawValue(this, enc);
@@ -11509,10 +11507,10 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
           return new RawValue(this, 0x1b);
         case "PC":
           return new RawValue(this, 0x1c);
-        case "O":
+        case "EX":
           return new RawValue(this, 0x1d);
         default:
-          regid = dasm.Disasm.REG_DISASM.indexOf(match[1]);
+          regid = dasm.Disasm.REG_DISASM.indexOf(match[1].toUpperCase());
           if (regid === -1) {
             return new LitValue(this, match[1]);
           } else {
@@ -11523,7 +11521,7 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
 
     Assembler.prototype.vpIWord = function(match) {
       var regid;
-      regid = dasm.Disasm.REG_DISASM.indexOf(match[1]);
+      regid = dasm.Disasm.REG_DISASM.indexOf(match[1].toUpperCase());
       if (regid === -1) {
         return new MemValue(this, void 0, new LitValue(this, match[1]));
       } else {
@@ -11543,26 +11541,19 @@ require.define("/dcpu-asm.js", function (require, module, exports, __dirname, __
 
     Assembler.prototype.vpArr = function(match) {
       var r;
-      if ((r = dasm.Disasm.REG_DISASM.indexOf(match[2])) !== -1) {
+      if ((r = dasm.Disasm.REG_DISASM.indexOf(match[2].toUpperCase())) !== -1) {
         return new MemValue(this, r, new LitValue(this, match[1]));
       }
-      if ((r = dasm.Disasm.REG_DISASM.indexOf(match[1])) !== -1) {
+      if ((r = dasm.Disasm.REG_DISASM.indexOf(match[1].toUpperCase())) !== -1) {
         return new MemValue(this, r, new LitValue(this, match[2]));
       } else {
-        return console.log("Unmatched value " + val);
+        return console.log("Unmatched value " + match[0]);
       }
     };
 
-    Assembler.prototype.dirGlobal = function(line) {
-      return;
-    };
-
-    Assembler.prototype.dirText = function(_) {
-      return this.section(".text");
-    };
-
-    Assembler.prototype.dirData = function(_) {
-      return this.section(".data");
+    Assembler.prototype.dirGlobal = function(match) {
+      console.log("exporting '" + match[2] + "'");
+      return this["export"](match[2]);
     };
 
     return Assembler;
