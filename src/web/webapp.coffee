@@ -7,7 +7,6 @@
 Module = {}
 
 # Imports
-$         = require 'jquery-browserify'
 dcpu      = require '../dcpu'
 dasm      = require '../dcpu-disasm'
 decode    = require '../dcpu-decode'
@@ -15,6 +14,11 @@ asm       = require '../dcpu-asm'
 Lem1802   = require('../hw/lem1802').Lem1802
 GenericClock = require('../hw/generic-clock').GenericClock
 GenericKeyboard = require('../hw/generic-keyboard').GenericKeyboard
+
+#
+# We rely on jQuery being already loaded
+#
+$         = window.$
 
 # Globals
 class DcpuWebapp

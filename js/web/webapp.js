@@ -4,8 +4,6 @@
 
   Module = {};
 
-  $ = require('jquery-browserify');
-
   dcpu = require('../dcpu');
 
   dasm = require('../dcpu-disasm');
@@ -19,6 +17,8 @@
   GenericClock = require('../hw/generic-clock').GenericClock;
 
   GenericKeyboard = require('../hw/generic-keyboard').GenericKeyboard;
+
+  $ = window.$;
 
   DcpuWebapp = (function() {
 
