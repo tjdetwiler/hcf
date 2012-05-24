@@ -83,13 +83,21 @@ class DcpuWebapp
     @setupCallbacks()
     @setupCPU()
     @updateCycles()
-    #@assemble()
     @updateRegs()
     @dumpMemory()
-    @mFiles.push new File("entry.s").text demoProgram
+
+    file = new File "entry.s"
+    file.text demoProgram
+    @mFiles.push file
+
+    file = new File "msg.s"
+    file.text demoProgramMsg
+    @mFiles.push file
+
     @mCreateDialog = $("#newFile").modal {
       show: false }
     @mCreateDialog.hide()
+    @assemble()
 
   #
   # Refresh the Register Output
@@ -131,10 +139,14 @@ class DcpuWebapp
   # Load text from UI, assemble it, and load it into the CPU.
   #
   assemble: () ->
-    @mAsm = new asm.Assembler()
-    exe = @mAsm.assembleAndLink window.editor.getValue()
-    if exe.result isnt "success"
-      @error "Error: Line #{exe.line}: #{exe.message}"
+    jobs = []
+    console.log @mFiles
+    for file in @mFiles
+      @mAsm = new asm.Assembler()
+      jobs.push @mAsm.assemble file.text()
+    console.log jobs
+    exe = asm.JobLinker.link jobs
+    console.log exe
     @mCpu.loadJOB exe
     @mCpu.regPC 0
     @dumpMemory()
@@ -179,7 +191,7 @@ class DcpuWebapp
   reset: () ->
     @stop()
     @mCpu.reset()
-    #@assemble()
+    @assemble()
     @updateCycles()
 
   create: (f) ->
@@ -245,7 +257,11 @@ demoProgram = '
         add a, 1\n
         add b, 1\n
         set pc, print_loop\n
-:crash  set pc, crash\n
-\n
-:ohhey  dat "Generic-Clock Test"\n
-        dat 0x0'
+:crash  set pc, crash\n'
+#\n
+#:ohhey  dat "Generic-Clock Test"\n
+#        dat 0x0'
+
+demoProgramMsg = '
+:ohhey  dat "So the linker works (kinda).", 0
+'
