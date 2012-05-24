@@ -39,17 +39,15 @@ class GenericClock extends Device
   setRate: () ->
     @mRate = @mCpu.regB()
     @mCount = 0
+    if @mTimer
+      # Cancel Timer
+      clearInterval @mTimer
+
     if @mRate
       # Start Timer at rate of 60/B ticks per second
-      console.log "#{@mRate}"
       @mRate = Math.floor 60/@mRate
-      console.log "#{@mRate}"
       @mRate = 1000/@mRate
-      console.log "#{@mRate}"
       @mTimer = setInterval @tick(), @mRate
-    else if @mTimer
-      # Cancel Timer
-      cancelInterval @mTimer
 
   #
   # Handles HWI #1

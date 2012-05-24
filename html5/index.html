@@ -22,7 +22,7 @@
   }
 
   .CodeMirror-scroll {
-    height: 400;
+    height: 400px;
     overflow: auto;
   }
 
@@ -82,14 +82,16 @@
             <div class="span5">
               <br>
               <br>
-              <canvas id="framebuffer" width="384" height="288"></canvas>
+              <canvas id="framebuffer" width="512" height="384">
+                Sorry, you need a HTML5 browser to use the LEM1802
+              </canvas>
               <br>
               <span>
                 <button id="btnRun" class="btn"><i class="icon-play"></i>Run</button>
                 <button id="btnStep" class="btn"><i class="icon-step-forward"></i>Step</button>
                 <button id="btnReset" class="btn"><i class="icon-refresh"></i>Reset</button>
                 <button id="btnAssemble" class="btn">Assemble</button>
-                <span class="pull-right">
+                <span class="pull-right" style="margin-right: 150px">
                   Cycles: <span id="cycles">0</span>
                 </span>
               </span>

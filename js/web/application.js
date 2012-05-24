@@ -2400,15 +2400,11 @@ require.define("/hw/generic-clock.coffee", function (require, module, exports, _
     GenericClock.prototype.setRate = function() {
       this.mRate = this.mCpu.regB();
       this.mCount = 0;
+      if (this.mTimer) clearInterval(this.mTimer);
       if (this.mRate) {
-        console.log("" + this.mRate);
         this.mRate = Math.floor(60 / this.mRate);
-        console.log("" + this.mRate);
         this.mRate = 1000 / this.mRate;
-        console.log("" + this.mRate);
         return this.mTimer = setInterval(this.tick(), this.mRate);
-      } else if (this.mTimer) {
-        return cancelInterval(this.mTimer);
       }
     };
 
@@ -2558,8 +2554,7 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
       this.mEditor = CodeMirror.fromTextArea(editor, {
         lineNumbers: true,
         mode: "text/x-csrc",
-        keyMap: "vim",
-        height: "100%"
+        keyMap: "vim"
       });
       $("a[href=#openFile-" + id).tab("show");
       link.click();
@@ -2666,7 +2661,6 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
     };
 
     DcpuWebapp.prototype.runStop = function() {
-      console.log("runStop " + this.mRunning);
       if (this.mRunning) {
         return this.stop();
       } else {
@@ -2720,7 +2714,7 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
     DcpuWebapp.prototype.setupCPU = function() {
       var lem;
       lem = new Lem1802(this.mCpu, $("#framebuffer")[0]);
-      lem.mScale = 3;
+      lem.mScale = 4;
       this.mCpu.addDevice(lem);
       this.mCpu.addDevice(new GenericClock(this.mCpu));
       return this.mCpu.addDevice(new GenericKeyboard(this.mCpu));

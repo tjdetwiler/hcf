@@ -47,8 +47,7 @@ class File
     @mEditor = CodeMirror.fromTextArea(editor, {
       lineNumbers: true
       mode: "text/x-csrc"
-      keyMap: "vim"
-      height: "100%"})
+      keyMap: "vim"})
 
     $("a[href=#openFile-#{id}").tab "show"
     link.click()
@@ -153,7 +152,6 @@ class DcpuWebapp
     @updateRegs()
 
   runStop: () ->
-    console.log "runStop #{@mRunning}"
     if @mRunning
       @stop()
     else
@@ -204,7 +202,7 @@ class DcpuWebapp
   setupCPU: () ->
     # Setup Devices
     lem = new Lem1802 @mCpu, $("#framebuffer")[0]
-    lem.mScale = 3
+    lem.mScale = 4
     @mCpu.addDevice lem
     @mCpu.addDevice new GenericClock @mCpu
     @mCpu.addDevice new GenericKeyboard @mCpu
