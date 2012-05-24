@@ -98,6 +98,7 @@ class DcpuWebapp
   # Run the CPU at approximately 100KHz
   #
   run: () ->
+    console.log "running"
     app = this
     cb = () ->
       for i in [0..10001]
@@ -129,7 +130,9 @@ class DcpuWebapp
   #
   setupCPU: () ->
     # Setup Devices
-    @mCpu.addDevice new Lem1802 @mCpu, $("#framebuffer")[0]
+    lem = new Lem1802 @mCpu, $("#framebuffer")[0]
+    lem.mScale = 3
+    @mCpu.addDevice lem
     @mCpu.addDevice new GenericClock @mCpu
     @mCpu.addDevice new GenericKeyboard @mCpu
 
@@ -152,4 +155,6 @@ class DcpuWebapp
 #
 # On Load
 #
-$ () -> new DcpuWebapp()
+$ () ->
+  console.log "Creating"
+  new DcpuWebapp()

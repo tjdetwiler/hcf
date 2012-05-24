@@ -94,6 +94,7 @@
 
     DcpuWebapp.prototype.run = function() {
       var app, cb;
+      console.log("running");
       app = this;
       cb = function() {
         var i, _i;
@@ -128,7 +129,10 @@
     };
 
     DcpuWebapp.prototype.setupCPU = function() {
-      this.mCpu.addDevice(new Lem1802(this.mCpu, $("#framebuffer")[0]));
+      var lem;
+      lem = new Lem1802(this.mCpu, $("#framebuffer")[0]);
+      lem.mScale = 3;
+      this.mCpu.addDevice(lem);
       this.mCpu.addDevice(new GenericClock(this.mCpu));
       return this.mCpu.addDevice(new GenericKeyboard(this.mCpu));
     };
@@ -166,6 +170,7 @@
   })();
 
   $(function() {
+    console.log("Creating");
     return new DcpuWebapp();
   });
 
