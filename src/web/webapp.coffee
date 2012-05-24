@@ -25,6 +25,7 @@ class DcpuWebapp
   constructor: () ->
     @mAsm = null
     @mRunTimer = null
+    @mRunning = false
     @mRegs = [
       ($ "#RegA"),
       ($ "#RegB"),
@@ -94,11 +95,18 @@ class DcpuWebapp
     @dumpMemory()
     @updateRegs()
 
+  runStop: () ->
+    console.log "runStop #{@mRunning}"
+    if @mRunning
+      @stop()
+    else
+      @run()
+    @mRunning = not @mRunning
+
   #
   # Run the CPU at approximately 100KHz
   #
   run: () ->
-    console.log "running"
     app = this
     cb = () ->
       for i in [0..10001]
@@ -107,6 +115,7 @@ class DcpuWebapp
       app.updateCycles()
     if @mRunTimer then clearInterval @timer
     @mRunTimer = setInterval cb, 50
+    $("#btnRun").html "<i class='icon-stop'></i>Stop"
 
   step: () ->
     @mCpu.step()
@@ -116,6 +125,8 @@ class DcpuWebapp
     if @mRunTimer
       clearInterval @mRunTimer
       @mRunTimer = null
+    $("#btnRun").html "<i class='icon-play'></i>Run"
+    
 
   #
   # Resets the CPU and the UI
@@ -145,9 +156,9 @@ class DcpuWebapp
       base = $("#membase").val()
       base = 0 if not base
       app.dumpMemory parseInt base
-    $("#btnRun").click () -> app.run()
-    $("#btnStep").click ()-> app.step()
-    $("#btnStop").click () -> app.stop()
+    $("#btnRun").click () -> app.runStop()
+    $("#btnStop").click () -> app.runStop()
+    $("#btnStep").click () -> app.step()
     $("#btnReset").click () -> app.reset()
     $("#btnAssemble").click () -> app.assemble()
 

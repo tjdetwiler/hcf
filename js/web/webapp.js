@@ -27,6 +27,7 @@
     function DcpuWebapp() {
       this.mAsm = null;
       this.mRunTimer = null;
+      this.mRunning = false;
       this.mRegs = [$("#RegA"), $("#RegB"), $("#RegC"), $("#RegX"), $("#RegY"), $("#RegZ"), $("#RegI"), $("#RegJ"), $("#RegPC"), $("#RegSP"), $("#RegEX")];
       this.mCpu = new dcpu.Dcpu16();
       this.setupCallbacks();
@@ -92,9 +93,18 @@
       return this.updateRegs();
     };
 
+    DcpuWebapp.prototype.runStop = function() {
+      console.log("runStop " + this.mRunning);
+      if (this.mRunning) {
+        this.stop();
+      } else {
+        this.run();
+      }
+      return this.mRunning = !this.mRunning;
+    };
+
     DcpuWebapp.prototype.run = function() {
       var app, cb;
-      console.log("running");
       app = this;
       cb = function() {
         var i, _i;
@@ -107,7 +117,8 @@
       if (this.mRunTimer) {
         clearInterval(this.timer);
       }
-      return this.mRunTimer = setInterval(cb, 50);
+      this.mRunTimer = setInterval(cb, 50);
+      return $("#btnRun").html("<i class='icon-stop'></i>Stop");
     };
 
     DcpuWebapp.prototype.step = function() {
@@ -118,8 +129,9 @@
     DcpuWebapp.prototype.stop = function() {
       if (this.mRunTimer) {
         clearInterval(this.mRunTimer);
-        return this.mRunTimer = null;
+        this.mRunTimer = null;
       }
+      return $("#btnRun").html("<i class='icon-play'></i>Run");
     };
 
     DcpuWebapp.prototype.reset = function() {
@@ -149,13 +161,13 @@
         return app.dumpMemory(parseInt(base));
       });
       $("#btnRun").click(function() {
-        return app.run();
+        return app.runStop();
+      });
+      $("#btnStop").click(function() {
+        return app.runStop();
       });
       $("#btnStep").click(function() {
         return app.step();
-      });
-      $("#btnStop").click(function() {
-        return app.stop();
       });
       $("#btnReset").click(function() {
         return app.reset();

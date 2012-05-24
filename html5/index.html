@@ -111,18 +111,19 @@ body {
               <canvas id="framebuffer" width="384" height="288"></canvas>
               <br>
               <span>
-                <button id="btnRun" class="btn">Run</button>
-                <button id="btnStep" class="btn">Step</button>
-                <button id="btnReset" class="btn">Reset</button>
+                <button id="btnRun" class="btn"><i class="icon-play"></i>Run</button>
+                <button id="btnStep" class="btn"><i class="icon-step-forward"></i>Step</button>
+                <button id="btnReset" class="btn"><i class="icon-refresh"></i>Reset</button>
                 <span class="pull-right">
                   Cycles: <span id="cycles">0</span>
                 </span>
               </span>
             </div><!--span-->
           </div>
+          <br>
           <div class="row-fluid">
             <div class="span4">
-              <table class="table-compact">
+              <table class="table" style="margin-top: 18px;">
               <thead>
                 <tr>
                   <th colspan="4">Registers</th>
@@ -163,6 +164,31 @@ body {
                 </tr>
               </tbody>
               </table>
+            </div>
+            <div class="span6">
+              <table class="table mono">                                                                                                                                          
+              <thead>                                                                                                                                                             
+                <tr>                                                                                                                                                                
+                  <th colspan="2">Memory Dump</th>                                                                                                                                  
+                  <th></th>                                                                                                                                                         
+                  <th>Base:</th>                                                                                                                                                    
+                 <th colspan="5"><input id="membase" type="text" value="0x0"/>                                                                                                     
+                </tr>                                                                                                                                                                
+                <tr>                                                                                                                                                                
+                  <th>Addr</th>                                                                                                                                                     
+                  <th>0000</th>                                                                                                                                                     
+                  <th>0001</th>                                                                                                                                                     
+                  <th>0002</th>                                                                                                                                                     
+                  <th>0003</th>                                                                                                                                                     
+                  <th>0004</th>                                                                                                                                                     
+                  <th>0005</th>                                                                                                                                                     
+                  <th>0006</th>                                                                                                                                                     
+                  <th>0007</th>                                                                                                                                                     
+                </tr>                                                                                                                                                               
+                </thead>                                                                                                                                                            
+                <tbody id="memdump-body">                                                                                                                                           
+              </tbody>                                                                                                                                                            
+              </table> 
             </div>
           </div>
         </div><!--/tab-pane-->
