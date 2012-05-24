@@ -20,12 +20,53 @@ GenericKeyboard = require('../hw/generic-keyboard').GenericKeyboard
 #
 $         = window.$
 
-# Globals
+class File
+  constructor: (name) ->
+    @mText = ""
+    @mName = name
+
+    id = name.split(".").join("_")
+    # Add to project file listing
+    $('#projFiles').append(
+      "<li><a href='#'><i class='icon-file'></i>#{name}</a></li>")
+
+    # Add to file tabs
+    link = $("<a href='#openFile-#{id}' data-toggle='tab'>#{name}<i class='icon-remove'></i></a>")
+    node =  $("<li></li>").append link
+    $('#openFiles').append node
+    $("#openFiles a").click (e) ->
+      e.preventDefault()
+      $(this).tab 'show'
+
+    # Create Editor
+    editor = $("<textarea id='tmp'></textarea>")[0]
+    pane = $("<div id='openFile-#{id}' class='tab-pane'></div>")
+    pane.append editor
+    $('#openFileContents').append pane[0]
+
+    @mEditor = CodeMirror.fromTextArea(editor, {
+      lineNumbers: true
+      mode: "text/x-csrc"
+      keyMap: "vim"
+      height: "100%"})
+
+    $("a[href=#openFile-#{id}").tab "show"
+    link.click()
+    @mEditor.refresh()
+
+
+  text: (val) ->
+    if val?
+      @mEditor.setValue val
+    else
+      @mEditor.getValue()
+
 class DcpuWebapp
   constructor: () ->
     @mAsm = null
     @mRunTimer = null
     @mRunning = false
+    @mFiles = []
     @mRegs = [
       ($ "#RegA"),
       ($ "#RegB"),
@@ -42,9 +83,13 @@ class DcpuWebapp
     @setupCallbacks()
     @setupCPU()
     @updateCycles()
-    @assemble()
+    #@assemble()
     @updateRegs()
     @dumpMemory()
+    @mFiles.push new File("entry.s").text demoProgram
+    @mCreateDialog = $("#newFile").modal {
+      show: false }
+    @mCreateDialog.hide()
 
   #
   # Refresh the Register Output
@@ -101,7 +146,6 @@ class DcpuWebapp
       @stop()
     else
       @run()
-    @mRunning = not @mRunning
 
   #
   # Run the CPU at approximately 100KHz
@@ -116,25 +160,31 @@ class DcpuWebapp
     if @mRunTimer then clearInterval @timer
     @mRunTimer = setInterval cb, 50
     $("#btnRun").html "<i class='icon-stop'></i>Stop"
-
-  step: () ->
-    @mCpu.step()
-    @updateRegs()
+    @mRunning = true
 
   stop: () ->
     if @mRunTimer
       clearInterval @mRunTimer
       @mRunTimer = null
     $("#btnRun").html "<i class='icon-play'></i>Run"
-    
+    @mRunning = false
+
+  step: () ->
+    @mCpu.step()
+    @updateRegs()
 
   #
   # Resets the CPU and the UI
   #
   reset: () ->
+    @stop()
     @mCpu.reset()
-    @assemble()
+    #@assemble()
     @updateCycles()
+
+  create: (f) ->
+    @mFiles.push new File f
+    @mCreateDialog.modal "toggle"
 
   #
   # Init CPU and Devices
@@ -162,10 +212,40 @@ class DcpuWebapp
     $("#btnReset").click () -> app.reset()
     $("#btnAssemble").click () -> app.assemble()
 
-
 #
 # On Load
 #
 $ () ->
-  console.log "Creating"
-  new DcpuWebapp()
+  window.app = new DcpuWebapp()
+
+
+demoProgram = '
+:start  ; Map framebuffer RAM\n
+        set a, 0\n
+        set b, 0x1000\n
+        hwi 0\n
+\n
+        set a, ohhey\n
+        jsr print\n
+\n
+        set a, 0\n
+        set b, 60\n
+        hwi 1\n
+        set a, 1\n
+:loop hwi 1\n
+        set pc, loop\n
+\n
+:print  set b, 0\n
+:print_loop\n
+        set c, [a]\n
+        ife c, 0\n
+        set pc, pop\n
+        bor c, 0x0f00\n
+        set [0x1000+b], c\n
+        add a, 1\n
+        add b, 1\n
+        set pc, print_loop\n
+:crash  set pc, crash\n
+\n
+:ohhey  dat "Generic-Clock Test"\n
+        dat 0x0'

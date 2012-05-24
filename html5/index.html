@@ -12,17 +12,23 @@
 <link href='codemirror2/lib/codemirror.css' rel='stylesheet'>
 
 <style type="text/css">
-body {
-  padding-top: 60px;
-  padding-bottom: 40px;
-}
-.sidebar-nav {
-  padding: 9px 0;
-}
-.CodeMirror-scroll {
-      height: 400;
-      overflow: auto;
-}
+  body {
+    padding-top: 60px;
+    padding-bottom: 40px;
+  }
+
+  .sidebar-nav {
+    padding: 9px 0;
+  }
+
+  .CodeMirror-scroll {
+    height: 400;
+    overflow: auto;
+  }
+
+  .mono {
+    font-family: 'Courier', sans-serif;                                                                                                                             
+  }
 </style>
 <link href="css/bootstrap-responsive.css" rel="stylesheet">
 
@@ -44,9 +50,9 @@ body {
       <a class="brand" href="#">DCPU 1.7 Emulator</a>
       <div class="nav-collapse">
         <ul class="nav">
-          <li class="active"><a href="#">Home</a></li>
+          <li class="active"><a href="#emulator">Emulator</a></li>
+          <li><a href="#font-editor">Font Editor</a></li>
           <li><a href="#about">About</a></li>
-          <li><a href="#contact">Contact</a></li>
         </ul>
       </div><!--/.nav-collapse -->
     </div>
@@ -57,10 +63,8 @@ body {
   <div class="row-fluid">
     <div class="span2">
       <div class="well sidebar-nav">
-        <ul class="nav nav-list">
-          <li class="nav-header">Unused</li>
-          <li class="active"><a href="#code" data-toggle="tab">Code</a></li>
-          <li><a href="#" data-toggle="tab">Configure</a></li>
+        <ul id="projFiles" class="nav nav-list">
+          <li class="nav-header">Project Files</li>
         </ul>
       </div><!--/.well -->
     </div><!--/span-->
@@ -69,41 +73,11 @@ body {
         <div id="code" class="tab-pane active">
           <div class="row-fluid">
             <div class="span7">
-              <ul id="editTab" class="nav nav-tabs">
-                <li><a href="#"><i class="icon-file"></i></a></li>
-                <li class="active"><a href="#" data-toggle="tab">entry.s</a></li>
+              <ul id="openFiles" class="nav nav-tabs">
+                <li><a href="#newFile" data-toggle="modal"><i class="icon-plus"></i></a></li>
               </ul>
-              <textarea id="codemirror">
-:start  ; Map framebuffer RAM
-        set a, 0
-        set b, 0x1000
-        hwi 0
-        
-        set a, ohhey
-        jsr print
-        
-        set a, 0
-        set b, 60
-        hwi 1
-        set a, 1
-:loop hwi 1
-        set pc, loop
-        
-:print  set b, 0
-:print_loop
-        set c, [a]
-        ife c, 0
-        set pc, pop
-        bor c, 0x0f00
-        set [0x1000+b], c
-        add a, 1
-        add b, 1
-        set pc, print_loop
-:crash  set pc, crash
-        
-:ohhey  dat "Generic-Clock Test"
-        dat 0x0
-            </textarea>
+              <div id="openFileContents" class="tab-content">
+              </div><!--tab-contents-->
             </div><!--span-->
             <div class="span5">
               <br>
@@ -123,7 +97,7 @@ body {
           <br>
           <div class="row-fluid">
             <div class="span4">
-              <table class="table" style="margin-top: 18px;">
+              <table class="table mono" style="margin-top: 18px;">
               <thead>
                 <tr>
                   <th colspan="4">Registers</th>
@@ -269,22 +243,35 @@ body {
 
 <script>
 $(function() {
-  $('#editTab a').click(function (e) {
-    e.preventDefault();
-    $(this).tab('show');
-  });
-
   CodeMirror.commands.save = function() { alert("Saving"); };
-  window.editor = CodeMirror.fromTextArea(document.getElementById("codemirror"), {
-    lineNumbers: true,
-    mode: "text/x-csrc",
-    keyMap: "vim",
-    height: "100%",
-  });
+
+//  $("#newFile").modal({
+//    show: false,
+//  }).hide();
 });
 
 </script>
 <script src="../js/web/application.js"></script>
+
+  <div class="modal" id="newFile">
+    <div class="modal-header">
+      <button class="close" data-dismiss="modal">×</button>
+      <h3>Create File</h3>
+    </div>
+    <div class="modal-body">
+      <form>
+        Filname: <input id="inNewfn" type="text"></input>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onClick="$('#newFile').modal('toggle')">
+        Close
+      </button>
+      <button class="btn btn-primary" onClick="app.create($('#inNewfn').val())">
+        Create
+      </button>
+    </div>
+  </div>
 
 </body>
 </html>
