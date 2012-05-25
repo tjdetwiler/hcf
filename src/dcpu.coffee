@@ -29,6 +29,7 @@ class Dcpu16
     @mRegStorage    = []
     @mIStream = new IStream @mMemory
     @mPendInstr = null
+    @mPendingIrq = null
     @mRegAccess = [
       @_regGen(Value.REG_A), @_regGen(Value.REG_B), @_regGen(Value.REG_C),
       @_regGen(Value.REG_X), @_regGen(Value.REG_Y), @_regGen(Value.REG_Z),
@@ -151,14 +152,15 @@ class Dcpu16
   # pop:  Returns [SP++]
   #
   push: (v) ->
-    sp = @regSP(@regSP()-1)
+    sp = @regSP()
     @mMemory[sp] = v
+    @regSP(sp-1)
   peek: ( ) ->
     sp = @regSP()
     @mMemory[sp]
   pop:  ( ) ->
     sp = @regSP(@regSP()+1)
-    @mMemory[sp - 1]
+    @mMemory[sp]
 
 
   #
@@ -218,8 +220,16 @@ class Dcpu16
     #
     if f = @mBreakpoints[i.addr()]
       @stop()
-      @mPendInstr = i
       return f(i.addr(), "x")
+
+    #
+    # Take an IRQ if pending and we're running (no irqs in single-step mode)
+    #
+    if @mPendingIrq
+      @doInterrupt @mPendingIrq
+      @mPendingIrq = null
+      i = new Instr @mIStream
+      return
 
     #
     # Execute and fire events
@@ -270,6 +280,9 @@ class Dcpu16
     this[f] valA, valB
 
   interrupt: (n) ->
+    @mPendingIrq = n
+
+  doInterrupt: (n) ->
     ia = @regIA()
 
     # Check IA

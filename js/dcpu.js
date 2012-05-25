@@ -27,6 +27,7 @@
       this.mRegStorage = [];
       this.mIStream = new IStream(this.mMemory);
       this.mPendInstr = null;
+      this.mPendingIrq = null;
       this.mRegAccess = [
         this._regGen(Value.REG_A), this._regGen(Value.REG_B), this._regGen(Value.REG_C), this._regGen(Value.REG_X), this._regGen(Value.REG_Y), this._regGen(Value.REG_Z), this._regGen(Value.REG_I), this._regGen(Value.REG_J), function(v) {
           return cpu.mIStream.index(v);
@@ -211,8 +212,9 @@
 
     Dcpu16.prototype.push = function(v) {
       var sp;
-      sp = this.regSP(this.regSP() - 1);
-      return this.mMemory[sp] = v;
+      sp = this.regSP();
+      this.mMemory[sp] = v;
+      return this.regSP(sp - 1);
     };
 
     Dcpu16.prototype.peek = function() {
@@ -224,7 +226,7 @@
     Dcpu16.prototype.pop = function() {
       var sp;
       sp = this.regSP(this.regSP() + 1);
-      return this.mMemory[sp - 1];
+      return this.mMemory[sp];
     };
 
     Dcpu16.prototype.loadBinary = function(bin, base) {
@@ -293,8 +295,13 @@
       i = this.mDecoded;
       if (f = this.mBreakpoints[i.addr()]) {
         this.stop();
-        this.mPendInstr = i;
         return f(i.addr(), "x");
+      }
+      if (this.mPendingIrq) {
+        this.doInterrupt(this.mPendingIrq);
+        this.mPendingIrq = null;
+        i = new Instr(this.mIStream);
+        return;
       }
       if (this.mPreExec != null) {
         this.mPreExec(i);
@@ -335,6 +342,10 @@
     };
 
     Dcpu16.prototype.interrupt = function(n) {
+      return this.mPendingIrq = n;
+    };
+
+    Dcpu16.prototype.doInterrupt = function(n) {
       var ia;
       ia = this.regIA();
       if (ia === 0) {
