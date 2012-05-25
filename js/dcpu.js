@@ -55,6 +55,7 @@
       this.mBreakpoints = [];
       this.mDevices = [];
       this.mRunTimer = null;
+      this.mSourceMap = [];
       this.reset();
     }
 
@@ -237,11 +238,32 @@
         x = bin[i];
         this.mMemory[base + i] = x;
       }
-      return this.regPC(base);
+      this.regPC(base);
+      return this.mDecoded = new Instr(this.mIStream);
     };
 
     Dcpu16.prototype.loadJOB = function(job) {
-      return this.loadBinary(job.sections[0].data, 0);
+      var bin, i, x, _i, _len, _ref;
+      bin = [];
+      _ref = job.sections[0].data;
+      for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+        x = _ref[i];
+        bin[i] = x.val;
+        this.mSourceMap[i] = x;
+        if (!(this.mSourceMap[x.file] != null)) {
+          this.mSourceMap[x.file] = [];
+        }
+        this.mSourceMap[x.file][x.line] = i;
+      }
+      return this.loadBinary(bin);
+    };
+
+    Dcpu16.prototype.line2addr = function(f, l) {
+      return this.mSourceMap[f][l];
+    };
+
+    Dcpu16.prototype.addr2line = function(a) {
+      return this.mSourceMap[a];
     };
 
     Dcpu16.prototype.run = function() {
@@ -269,13 +291,8 @@
     };
 
     Dcpu16.prototype.step = function() {
-      var f, i, _results;
-      if (this.mPendInstr) {
-        i = this.mPendInstr;
-        this.mPendInstr = null;
-      } else {
-        i = new Instr(this.mIStream);
-      }
+      var f, i;
+      i = this.mDecoded;
       if (f = this.mBreakpoints[i.addr()]) {
         this.stop();
         this.mPendInstr = i;
@@ -288,21 +305,22 @@
       if (this.mPostExec != null) {
         this.mPostExec(i);
       }
-      _results = [];
       while (this.mCCFail) {
         i = new Instr(this.mIStream);
         this.mCCFail = i.cond();
         if (this.mCondFail != null) {
-          _results.push(this.mCondFail(i));
-        } else {
-          _results.push(void 0);
+          this.mCondFail(i);
         }
       }
-      return _results;
+      return this.mDecoded = new Instr(this.mIStream);
     };
 
     Dcpu16.prototype.breakpoint = function(a, f) {
       return this.mBreakpoints[a] = f;
+    };
+
+    Dcpu16.prototype.next = function() {
+      return this.mDecoded;
     };
 
     Dcpu16.prototype.exec = function(i) {

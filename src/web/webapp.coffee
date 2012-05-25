@@ -47,7 +47,14 @@ class File
     @mEditor = CodeMirror.fromTextArea(editor, {
       lineNumbers: true
       mode: "text/x-csrc"
-      keyMap: "vim"})
+      keyMap: "vim"
+      onGutterClick: (cm,n,e) ->
+        info = cm.lineInfo n
+        if info.markerText
+          cm.clearMarker n
+        else
+          cm.setMarker n, "<span style='color: #900'>●</span> %N%"
+    })
 
     $("a[href=#openFile-#{id}").tab "show"
     $(".file-close").click () -> alert "oh hey"
@@ -60,6 +67,8 @@ class File
       @mEditor.setValue val
     else
       @mEditor.getValue()
+  name: () -> @mName
+  editor: () -> @mEditor
 
 class DcpuWebapp
   constructor: () ->
@@ -91,10 +100,12 @@ class DcpuWebapp
     file = new File "entry.s"
     file.text demoProgram
     @mFiles.push file
+    @mFiles["entry.s"] = file
 
     file = new File "msg.s"
     file.text demoProgramMsg
     @mFiles.push file
+    @mFiles["msg.s"] = file
 
     @mCreateDialog = $("#newFile").modal {
       show: false }
@@ -144,8 +155,9 @@ class DcpuWebapp
     jobs = []
     for file in @mFiles
       @mAsm = new asm.Assembler()
-      jobs.push @mAsm.assemble file.text()
+      jobs.push @mAsm.assemble file.text(), file.name()
     exe = asm.JobLinker.link jobs
+    console.log exe
     @mCpu.loadJOB exe
     @mCpu.regPC 0
     @dumpMemory()
@@ -186,6 +198,14 @@ class DcpuWebapp
   step: () ->
     @mCpu.step()
     @updateRegs()
+    @updateCycles()
+    i = @mCpu.next()
+    info = @mCpu.addr2line i.addr()
+    editor = @mFiles[info.file].editor()
+    if @mActiveLine?
+      @mFiles[@mActiveLine.file].editor().setLineClass(@mActiveLine.line, null, null)
+    editor.setLineClass(info.line, null, "activeline")
+    @mActiveLine = {file: info.file, line: info.line}
 
   #
   # Resets the CPU and the UI
@@ -197,7 +217,9 @@ class DcpuWebapp
     @updateCycles()
 
   create: (f) ->
-    @mFiles.push new File f
+    file = new File f
+    @mFiles.push file
+    @mFiles[f] = file
     @mCreateDialog.modal "toggle"
 
   #

@@ -19,9 +19,7 @@
       this.mReg = reg;
     }
 
-    RegValue.prototype.emit = function(stream) {
-      return [];
-    };
+    RegValue.prototype.emit = function() {};
 
     RegValue.prototype.encode = function() {
       return this.mReg;
@@ -47,13 +45,11 @@
       this.mLit = lit;
     }
 
-    MemValue.prototype.emit = function(stream) {
+    MemValue.prototype.emit = function() {
       if (!(this.mLit != null)) {
         return;
       }
-      if (this.mLit != null) {
-        return stream.push(this.mLit.value());
-      }
+      return this.mLit.value();
     };
 
     MemValue.prototype.encode = function() {
@@ -105,11 +101,11 @@
       }
     };
 
-    LitValue.prototype.emit = function(stream) {
+    LitValue.prototype.emit = function() {
       if (this.isLabel()) {
-        return stream.push(this.mLit);
+        return this.mLit;
       } else if (this.mLit > 0x1e || this.isLabel()) {
-        return stream.push(this.value());
+        return this.value();
       }
     };
 
@@ -136,9 +132,7 @@
       this.mRaw = raw;
     }
 
-    RawValue.prototype.emit = function() {
-      return;
-    };
+    RawValue.prototype.emit = function() {};
 
     RawValue.prototype.encode = function() {
       return this.mRaw;
@@ -155,10 +149,16 @@
     function Data(asm, dat) {
       this.mAsm = asm;
       this.mData = dat;
+      this.mFile = asm.file();
+      this.mLine = asm.line();
     }
 
     Data.prototype.emit = function(stream) {
-      return stream.push(this.mData);
+      return stream.push({
+        val: this.mData,
+        file: this.mFile,
+        line: this.mLine
+      });
     };
 
     return Data;
@@ -175,6 +175,8 @@
       this.mSize = 0;
       this.mOp = opc;
       this.mVals = vals;
+      this.mFile = asm.file();
+      this.mLine = asm.line();
     }
 
     Instruction.prototype.emit = function(stream) {
@@ -190,12 +192,24 @@
         return _results;
       }).call(this);
       instr = this.mOp | (enc[0] << 5) | (enc[1] << 10);
-      stream.push(instr);
+      stream.push({
+        val: instr,
+        file: this.mFile,
+        line: this.mLine
+      });
       _ref = this.mVals;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         v = _ref[_i];
-        _results.push(v.emit(stream));
+        if ((enc = v.emit()) != null) {
+          _results.push(stream.push({
+            val: enc,
+            file: this.mFile,
+            line: this.mLine
+          }));
+        } else {
+          _results.push(void 0);
+        }
       }
       return _results;
     };
@@ -235,9 +249,13 @@
       }
       for (i = _j = 0, _len1 = code.length; _j < _len1; i = ++_j) {
         v = code[i];
-        if ((addr = syms[v]) != null) {
-          code[i] = addr;
-        } else if (isNaN(v)) {
+        if ((addr = syms[v.val]) != null) {
+          code[i] = {
+            val: addr,
+            file: v.file,
+            line: v.line
+          };
+        } else if (isNaN(v.val)) {
           console.log("Error: Undefined Symbol '" + v + "'");
         }
       }
@@ -364,6 +382,8 @@
           this.mOpcDict[op.id.toUpperCase()] = op;
         }
       }
+      this.mFile = "undefined";
+      this.mLine = 0;
     }
 
     Assembler.prototype.label = function(name, addr) {
@@ -436,11 +456,17 @@
       return _results;
     };
 
-    Assembler.prototype.assemble = function(text) {
+    Assembler.prototype.assemble = function(text, fn) {
       var i, l, lines, prog, r, s, sections, _i, _len, _ref;
+      if (fn == null) {
+        fn = "undefined";
+      }
       lines = text.split("\n");
+      this.mFile = fn;
+      i = 0;
       for (_i = 0, _len = lines.length; _i < _len; _i++) {
         l = lines[_i];
+        this.mLine = i++;
         this.processLine(l);
       }
       sections = [];
@@ -467,6 +493,14 @@
       var exe, job;
       job = this.assemble(text);
       return exe = JobLinker.link([job]);
+    };
+
+    Assembler.prototype.line = function() {
+      return this.mLine;
+    };
+
+    Assembler.prototype.file = function() {
+      return this.mFile;
     };
 
     Assembler.prototype.lpEmpty = function(match) {};

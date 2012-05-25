@@ -49,6 +49,7 @@ class Dcpu16
     @mBreakpoints = []
     @mDevices = []
     @mRunTimer = null
+    @mSourceMap = []
     @reset()
 
   #
@@ -167,10 +168,22 @@ class Dcpu16
   loadBinary: (bin, base=0) ->
     @mMemory[base+i] = x for x,i in bin
     @regPC base
+    @mDecoded = new Instr @mIStream
 
   loadJOB: (job) ->
     #TODO: support multiple sections
-    @loadBinary job.sections[0].data, 0
+    bin = []
+    for x,i in job.sections[0].data
+      bin[i] = x.val
+      @mSourceMap[i] = x
+      if not @mSourceMap[x.file]?
+        @mSourceMap[x.file] = []
+      @mSourceMap[x.file][x.line] = i
+
+    @loadBinary bin
+
+  line2addr: (f,l) -> @mSourceMap[f][l]
+  addr2line: (a) -> @mSourceMap[a]
 
   #
   # Runs the CPU at approx 100KHz
@@ -198,15 +211,7 @@ class Dcpu16
   # stop: Stops the CPU.
   #
   step: () ->
-    #
-    # A pending instruction is one that has already been decoded, but
-    # not yet executed.
-    #
-    if @mPendInstr
-      i = @mPendInstr
-      @mPendInstr = null
-    else
-      i = new Instr @mIStream
+    i = @mDecoded
 
     #
     # Check for execution breakpoint
@@ -232,6 +237,8 @@ class Dcpu16
       @mCCFail = i.cond()
       if @mCondFail? then @mCondFail i
 
+    @mDecoded = new Instr @mIStream
+
   #
   # Sets an execution breakpoint
   #
@@ -245,6 +252,8 @@ class Dcpu16
   #
   breakpoint: (a,f) ->
     @mBreakpoints[a] = f
+
+  next: () -> @mDecoded
 
   exec: (i) ->
     opc = i.opc()

@@ -19,7 +19,7 @@ class RegValue
   constructor: (asm, reg) ->
     @mAsm = asm
     @mReg = reg
-  emit: (stream) -> []
+  emit: () ->
   encode: () -> @mReg
 
 class MemValue
@@ -37,9 +37,11 @@ class MemValue
     @mAsm = asm
     @mReg = reg
     @mLit = lit
-  emit: (stream) ->
+
+  emit: () ->
     if not @mLit? then return
-    if @mLit? then stream.push @mLit.value()
+    return @mLit.value()
+
   encode: () ->
     if @mLit? and @mReg? and not @mLit.isLabel()
       @mReg + 0x10
@@ -75,11 +77,11 @@ class LitValue
     else
       return @mLit
 
-  emit: (stream) ->
+  emit: () ->
     if @isLabel()
-      stream.push @mLit
+      @mLit
     else if @mLit > 0x1e or @isLabel()
-      stream.push @value()
+      @value()
 
   encode: () ->
     if @mLit == -1
@@ -93,15 +95,18 @@ class RawValue
   constructor: (asm, raw) ->
     @mAsm = asm
     @mRaw = raw
-  emit: () -> undefined
+  emit: () ->
   encode: () -> @mRaw
 
 class Data
   constructor: (asm, dat) ->
     @mAsm = asm
     @mData = dat
+    @mFile = asm.file()
+    @mLine = asm.line()
 
-  emit: (stream) -> stream.push @mData
+  emit: (stream) ->
+    stream.push {val: @mData, file: @mFile, line: @mLine}
 
 class Instruction
   constructor: (asm, opc, vals) ->
@@ -110,12 +115,16 @@ class Instruction
     @mSize = 0
     @mOp = opc
     @mVals = vals
+    @mFile = asm.file()
+    @mLine = asm.line()
 
   emit: (stream) ->
     enc = (v.encode() for v in @mVals)
     instr = @mOp | (enc[0] << 5) | (enc[1] << 10)
-    stream.push instr
-    v.emit stream for v in @mVals
+    stream.push {val: instr, file: @mFile, line: @mLine}
+    for v in @mVals
+      if (enc = v.emit())?
+        stream.push {val: enc, file: @mFile, line: @mLine}
 
 #
 # JSON Object File Linker
@@ -143,9 +152,9 @@ class JobLinker
     # Resolve
     #
     for v,i in code
-      if (addr = syms[v])?
-        code[i] = addr
-      else if isNaN v
+      if (addr = syms[v.val])?
+        code[i] = {val: addr, file: v.file, line: v.line}
+      else if isNaN v.val
         console.log "Error: Undefined Symbol '#{v}'"
 
     return r =
@@ -219,15 +228,19 @@ class Assembler
       if op? then @mOpcDict[op.id.toUpperCase()] = op
     for op in Instr.ADV_OPS
       if op? then @mOpcDict[op.id.toUpperCase()] = op
+    @mFile = "undefined"
+    @mLine = 0
 
   label: (name, addr) ->
     if not @mLabels[@mSect]?
       @mLabels[@mSect] = {}
     @mLabels[@mSect][name] = addr
+
   export: (name, addr) ->
     if not @mExports[@mSect]?
       @mExports[@mSect] = {}
     @mExports[@mSect][name] = addr
+
   lookup:      (name) -> @mLabels[@mSect][name]
   defined:     (name) -> lookup(name)?
   incPc:           () -> ++@mPc
@@ -255,9 +268,13 @@ class Assembler
     for i in @mInstrs[sec]
       i.emit stream 
 
-  assemble: (text) ->
+  assemble: (text, fn = "undefined") ->
     lines = text.split "\n"
+    @mFile = fn
+
+    i = 0
     for l in lines
+      @mLine = i++
       @processLine l
 
     #
@@ -279,6 +296,8 @@ class Assembler
     job = @assemble text
     exe = JobLinker.link [job]
 
+  line: () -> @mLine
+  file: () -> @mFile
 
   #############################################################################
   # Line Parsers

@@ -44,7 +44,16 @@
       this.mEditor = CodeMirror.fromTextArea(editor, {
         lineNumbers: true,
         mode: "text/x-csrc",
-        keyMap: "vim"
+        keyMap: "vim",
+        onGutterClick: function(cm, n, e) {
+          var info;
+          info = cm.lineInfo(n);
+          if (info.markerText) {
+            return cm.clearMarker(n);
+          } else {
+            return cm.setMarker(n, "<span style='color: #900'>●</span> %N%");
+          }
+        }
       });
       $("a[href=#openFile-" + id).tab("show");
       $(".file-close").click(function() {
@@ -60,6 +69,14 @@
       } else {
         return this.mEditor.getValue();
       }
+    };
+
+    File.prototype.name = function() {
+      return this.mName;
+    };
+
+    File.prototype.editor = function() {
+      return this.mEditor;
     };
 
     return File;
@@ -88,9 +105,11 @@
       file = new File("entry.s");
       file.text(demoProgram);
       this.mFiles.push(file);
+      this.mFiles["entry.s"] = file;
       file = new File("msg.s");
       file.text(demoProgramMsg);
       this.mFiles.push(file);
+      this.mFiles["msg.s"] = file;
       this.mCreateDialog = $("#newFile").modal({
         show: false
       });
@@ -147,9 +166,10 @@
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         file = _ref[_i];
         this.mAsm = new asm.Assembler();
-        jobs.push(this.mAsm.assemble(file.text()));
+        jobs.push(this.mAsm.assemble(file.text(), file.name()));
       }
       exe = asm.JobLinker.link(jobs);
+      console.log(exe);
       this.mCpu.loadJOB(exe);
       this.mCpu.regPC(0);
       this.dumpMemory();
@@ -195,8 +215,21 @@
     };
 
     DcpuWebapp.prototype.step = function() {
+      var editor, i, info;
       this.mCpu.step();
-      return this.updateRegs();
+      this.updateRegs();
+      this.updateCycles();
+      i = this.mCpu.next();
+      info = this.mCpu.addr2line(i.addr());
+      editor = this.mFiles[info.file].editor();
+      if (this.mActiveLine != null) {
+        this.mFiles[this.mActiveLine.file].editor().setLineClass(this.mActiveLine.line, null, null);
+      }
+      editor.setLineClass(info.line, null, "activeline");
+      return this.mActiveLine = {
+        file: info.file,
+        line: info.line
+      };
     };
 
     DcpuWebapp.prototype.reset = function() {
@@ -207,7 +240,10 @@
     };
 
     DcpuWebapp.prototype.create = function(f) {
-      this.mFiles.push(new File(f));
+      var file;
+      file = new File(f);
+      this.mFiles.push(file);
+      this.mFiles[f] = file;
       return this.mCreateDialog.modal("toggle");
     };
 
