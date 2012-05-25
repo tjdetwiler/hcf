@@ -21,7 +21,9 @@ class Lem1802 extends Device
     @mScreen = undefined
     @mUserFont = undefined
     @mUserPalette = undefined
+    @mBorderColor = 4
     @clear()
+    @drawBorder @mBorderColor
 
   id:   () -> 0x7349f615
   mfgr: () -> 0x1c6c8b38
@@ -73,10 +75,13 @@ class Lem1802 extends Device
       @mUserPalette = (0 for _ in [0..@PALETTE_RAM_SIZE])
     @mPaletteAddr = base
 
-  setBorderColor:   () -> undefined
+  setBorderColor:   () -> @drawBorder @mBorderColor = @mCpu.regB() & 0xf
 
   readFontRam:    (i) ->
-    Lem1802.DFL_FONT[i]
+    if @mFont?
+      @mFont[i]
+    else
+      Lem1802.DFL_FONT[i]
 
   readPaletteRam: (i) ->
     word = Lem1802.DFL_PALETTE[i]
@@ -89,12 +94,12 @@ class Lem1802 extends Device
     "rgb(#{c.r*16}, #{c.g*16}, #{c.b*16})"
 
   getChar: (c) ->
-    #[@readFontRam(c*2+1), @readFontRam(c*2)]
     [@readFontRam(c*2), @readFontRam(c*2+1)]
 
   #
   # x - X coordinate to place character
   # y - Y coordinate to place character
+  # c - Char data to draw (ascii/color/blink)
   #
   drawChar: (x,y,c) ->
     # Can't draw without a context
@@ -117,10 +122,32 @@ class Lem1802 extends Device
         y_ = y + (i%8)
         @mCtx.fillRect(x_*@mScale,y_*@mScale,@mScale,@mScale)
 
+  drawBorder: (c) ->
+    c = c << 8
+    for x in [0..@WIDTH+1]
+      @drawChar x, 0, c
+      @drawChar x, @HEIGHT+1, c
+    for y in [0..@HEIGHT+1]
+      @drawChar 0, y, c
+      @drawChar @WIDTH+1, y, c
+
+  #
+  # Clears the screen to black
+  #
   clear: () ->
     if not @mCtx? then return
     @mCtx.fillStyle = @rgbString @readPaletteRam 0xf
-    @mCtx.fillRect(0, 0, 128 * @mScale, 96 * @mScale)
+    @mCtx.fillRect(0, 0, (@WIDTH+2) * 4 * @mScale, (@HEIGHT+2) * 8 * @mScale)
+    @drawBorder()
+
+  #
+  # Redraws the entire screen.
+  #
+  redraw: () ->
+    for x in [0..@WIDTH]
+      for y in [0..@HEIGHT]
+        i = y * @WIDTH+x
+        if @mScreen[i] then @drawChar x+1, y+1, @mScreen[i]
 
   #
   # Memory Mapped Callback Generators
@@ -128,21 +155,27 @@ class Lem1802 extends Device
   _screenCB:    () ->
     lem = this
     (a,v) ->
-      x = a % 32
-      y = Math.floor a/32
-      lem.drawChar x,y,v
+      lem.mScreen[a] = v
+      lem.redraw()
 
   _fontCB:      () ->
     lem = this
-    (a,v) -> undefined
+    (a,v) ->
+      lem.mFont[a] = v
+      lem.redraw()
 
   _paletteCB:   () ->
     lem = this
-    (a,v) -> undefined
+    (a,v) ->
+      lem.mPalette[a] = v
+      lem.redraw()
 
   VID_RAM_SIZE:     386
   FONT_RAM_SIZE:    256
   PALETTE_RAM_SIZE: 16
+  WIDTH:            32
+  HEIGHT:           12
+  BORDER_SIZE:      12
 
   @DFL_FONT: [
     0x0,0x0,  #0:   NON-PRINT
