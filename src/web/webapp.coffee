@@ -28,7 +28,7 @@ class File
     id = name.split(".").join("_")
     # Add to project file listing
     $('#projFiles').append(
-      "<li><a href='#'><i class='icon-file'></i>#{name}</a></li>")
+      "<li><a href='#'><i class='icon-file file-close'></i>#{name}</a></li>")
 
     # Add to file tabs
     link = $("<a href='#openFile-#{id}' data-toggle='tab'>#{name}<i class='icon-remove'></i></a>")
@@ -50,6 +50,7 @@ class File
       keyMap: "vim"})
 
     $("a[href=#openFile-#{id}").tab "show"
+    $(".file-close").click () -> alert "oh hey"
     link.click()
     @mEditor.refresh()
 
@@ -66,6 +67,8 @@ class DcpuWebapp
     @mRunTimer = null
     @mRunning = false
     @mFiles = []
+    @mInstrCount = 0
+    @mLoopCount = 0
     @mRegs = [
       ($ "#RegA"),
       ($ "#RegB"),
@@ -139,13 +142,10 @@ class DcpuWebapp
   #
   assemble: () ->
     jobs = []
-    console.log @mFiles
     for file in @mFiles
       @mAsm = new asm.Assembler()
       jobs.push @mAsm.assemble file.text()
-    console.log jobs
     exe = asm.JobLinker.link jobs
-    console.log exe
     @mCpu.loadJOB exe
     @mCpu.regPC 0
     @dumpMemory()
@@ -163,10 +163,14 @@ class DcpuWebapp
   run: () ->
     app = this
     cb = () ->
-      for i in [0..10001]
+      app.mLoopCount++
+      # FIXME: Parameterize these values (freq and step)
+      target = app.mLoopCount * (100000/20)
+      while app.mCpu.mCycles < target
         app.mCpu.step()
       app.updateRegs()
       app.updateCycles()
+
     if @mRunTimer then clearInterval @timer
     @mRunTimer = setInterval cb, 50
     $("#btnRun").html "<i class='icon-stop'></i>Stop"

@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>DCPU</title>
+<title>hcf.io - DCPU 1.7 Toolkit</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="">
 <meta name="author" content="">
@@ -47,12 +47,13 @@
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </a>
-      <a class="brand" href="#">DCPU 1.7 Emulator</a>
+      <a class="brand" href="#">hcf.io alpha</a>
       <div class="nav-collapse">
         <ul class="nav">
-          <li class="active"><a href="#emulator">Emulator</a></li>
-          <li><a href="#font-editor">Font Editor</a></li>
-          <li><a href="#about">About</a></li>
+          <li class="active"><a href="#emulator" data-toggle="tab">Emulator</a></li>
+          <li><a href="#disassembler" data-toggle="tab">Disassembler</a></li>
+          <li><a href="#font-editor" data-toggle="tab">Font Editor</a></li>
+          <li><a href="#about" data-toggle="tab">About</a></li>
         </ul>
       </div><!--/.nav-collapse -->
     </div>
@@ -70,9 +71,9 @@
     </div><!--/span-->
     <div class="span10">
       <div class="tab-content">
-        <div id="code" class="tab-pane active">
+        <div id="emulator" class="tab-pane active">
           <div class="row-fluid">
-            <div class="span7">
+            <div class="span5">
               <ul id="openFiles" class="nav nav-tabs">
                 <li><a href="#newFile" data-toggle="modal"><i class="icon-plus"></i></a></li>
               </ul>
@@ -91,7 +92,7 @@
                 <button id="btnStep" class="btn"><i class="icon-step-forward"></i>Step</button>
                 <button id="btnReset" class="btn"><i class="icon-refresh"></i>Reset</button>
                 <button id="btnAssemble" class="btn">Assemble</button>
-                <span class="pull-right" style="margin-right: 150px">
+                <span class="pull-right" style="margin-right: 100">
                   Cycles: <span id="cycles">0</span>
                 </span>
               </span>
@@ -169,52 +170,20 @@
             </div>
           </div>
         </div><!--/tab-pane-->
-        <div id="run" class="tab-pane">
+        <div id="disassembler" class="tab-pane">
+          <h3>Disassembler</h3>
+          <p>Under Construction</p>
+        </div><!--/tab-pane-->
+        <div id="font-editor" class="tab-pane">
+          <h3>Font Editor</h3>
+          <p>Under Construction</p>
         </div>
-        <div id="configure" class="tab-pane">
-          <div class="hero-unit">
-            <h1>Hello, world!</h1>
-            <p>This is a template for a simple marketing or informational website. It includes a large callout called the hero unit and three supporting pieces of content. Use it as a starting point to create something more unique.</p>
-            <p><a class="btn btn-primary btn-large">Learn more &raquo;</a></p>
-          </div>
-          <div class="row-fluid">
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-          </div><!--/row-->
-          <div class="row-fluid">
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-            <div class="span4">
-              <h2>Heading</h2>
-              <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-              <p><a class="btn" href="#">View details &raquo;</a></p>
-            </div><!--/span-->
-          </div><!--/row-->
-        </div><!--/span9-->
-      </div>
-      </div>
-    </div><!--/tab-container-->
+        <div id="about" class="tab-pane">
+          <h3>About</h3>
+          <p>Under Construction</p>
+        </div><!--/about-tab-->
+      </div> <!--/tab-content-->
+    </div> <!--/span-->
   </div><!--/row-->
   <hr>
   <!--
