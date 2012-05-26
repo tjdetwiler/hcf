@@ -11,6 +11,7 @@ decode = require './dcpu-decode'
 dasm = require './dcpu-disasm'
 
 Instr = decode.Instr
+Value = decode.Value
 
 #
 # Class to handle register values.
@@ -394,12 +395,12 @@ class Assembler
   #
   vpWord:  (match) ->
     switch match[1].toUpperCase()
-      when "POP"    then new RawValue @, 0x18
-      when "PEEK"   then new RawValue @, 0x19
-      when "PUSH"   then new RawValue @, 0x1a
-      when "SP"     then new RawValue @, 0x1b
-      when "PC"     then new RawValue @, 0x1c
-      when "EX"     then new RawValue @, 0x1d
+      when "POP"    then new RawValue @, Value.VAL_POP
+      when "PUSH"   then new RawValue @, Value.VAL_PUSH
+      when "PEEK"   then new RawValue @, Value.VAL_PEEK
+      when "SP"     then new RawValue @, Value.VAL_SP
+      when "PC"     then new RawValue @, Value.VAL_PC
+      when "EX"     then new RawValue @, Value.VAL_EX
       else
         regid = dasm.Disasm.REG_DISASM.indexOf match[1].toUpperCase()
         if regid == -1
