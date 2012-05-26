@@ -1,54 +1,44 @@
 CodeMirror.defineMode("dasm", function(config, parserConfig) {
   var indentUnit = config.indentUnit,
       keywords = parserConfig.keywords || {},
-      blockKeywords = parserConfig.blockKeywords || {},
-      atoms = parserConfig.atoms || {},
       hooks = parserConfig.hooks || {},
       multiLineStrings = parserConfig.multiLineStrings;
   var isOperatorChar = /[+\-*&%=<>!?|\/]/;
+  var atoms = new Array();
 
   var curPunc;
 
   function tokenBase(stream, state) {
-    var ch = stream.next();
-    if (hooks[ch]) {
-      var result = hooks[ch](stream, state);
-      if (result !== false) return result;
+    var ch = stream.peek();
+    if (stream.sol() && ch == ":") {
+      ch = stream.next();
+      stream.eatWhile(/[\S\.]/);
+      atoms.push(stream.current().substr(1));
+      return "label";
+    }
+    else 
+      ch = stream.next();
+
+    if (ch == ";") {
+      stream.skipToEnd();
+      return "comment";
     }
     if (ch == '"' || ch == "'") {
       state.tokenize = tokenString(ch);
       return state.tokenize(stream, state);
     }
-    if (/[\[\]{}\(\),;\:\.]/.test(ch)) {
-      curPunc = ch;
-      return null;
-    }
     if (/\d/.test(ch)) {
       stream.eatWhile(/[\w\.]/);
       return "number";
     }
-    if (ch == "/") {
-      if (stream.eat("*")) {
-        state.tokenize = tokenComment;
-        return tokenComment(stream, state);
-      }
-      if (stream.eat("/")) {
-        stream.skipToEnd();
-        return "comment";
-      }
-    }
-    if (isOperatorChar.test(ch)) {
-      stream.eatWhile(isOperatorChar);
-      return "operator";
-    }
     stream.eatWhile(/[\w\$_]/);
     var cur = stream.current();
     if (keywords.propertyIsEnumerable(cur)) {
-      if (blockKeywords.propertyIsEnumerable(cur)) curPunc = "newstatement";
       return "keyword";
     }
-    if (atoms.propertyIsEnumerable(cur)) return "atom";
-    return "word";
+    else if (atoms.indexOf(cur) > -1) {
+      return "label";
+    }
   }
 
   function tokenString(quote) {
@@ -64,18 +54,6 @@ CodeMirror.defineMode("dasm", function(config, parserConfig) {
     };
   }
 
-  function tokenComment(stream, state) {
-    var maybeEnd = false, ch;
-    while (ch = stream.next()) {
-      if (ch == "/" && maybeEnd) {
-        state.tokenize = null;
-        break;
-      }
-      maybeEnd = (ch == "*");
-    }
-    return "comment";
-  }
-
   function Context(indented, column, type, align, prev) {
     this.indented = indented;
     this.column = column;
@@ -86,13 +64,7 @@ CodeMirror.defineMode("dasm", function(config, parserConfig) {
   function pushContext(state, col, type) {
     return state.context = new Context(state.indented, col, type, null, state.context);
   }
-  function popContext(state) {
-    var t = state.context.type;
-    if (t == ")" || t == "]" || t == "}")
-      state.indented = state.context.indented;
-    return state.context = state.context.prev;
-  }
-
+  
   // Interface
 
   return {
@@ -115,21 +87,8 @@ CodeMirror.defineMode("dasm", function(config, parserConfig) {
       if (stream.eatSpace()) return null;
       curPunc = null;
       var style = (state.tokenize || tokenBase)(stream, state);
-      if (style == "comment" || style == "meta") return style;
+      if (style == "comment" || style == "meta" || style == "label") return style;
       if (ctx.align == null) ctx.align = true;
-
-      if ((curPunc == ";" || curPunc == ":") && ctx.type == "statement") popContext(state);
-      else if (curPunc == "{") pushContext(state, stream.column(), "}");
-      else if (curPunc == "[") pushContext(state, stream.column(), "]");
-      else if (curPunc == "(") pushContext(state, stream.column(), ")");
-      else if (curPunc == "}") {
-        while (ctx.type == "statement") ctx = popContext(state);
-        if (ctx.type == "}") ctx = popContext(state);
-        while (ctx.type == "statement") ctx = popContext(state);
-      }
-      else if (curPunc == ctx.type) popContext(state);
-      else if (ctx.type == "}" || ctx.type == "top" || (ctx.type == "statement" && curPunc == "newstatement"))
-        pushContext(state, stream.column(), "statement");
       state.startOfLine = false;
       return style;
     },
@@ -154,9 +113,7 @@ CodeMirror.defineMode("dasm", function(config, parserConfig) {
     for (var i = 0; i < words.length; ++i) obj[words[i]] = true;
     return obj;
   }
-  var cKeywords = "auto if break int case long char register continue return default short do sizeof " +
-    "double static else struct entry switch extern typedef float union for unsigned " +
-    "goto while enum void const signed volatile";
+  var cKeywords = "set add sub mul mli div dvi mod mdi and bor xor shr asr shl ifb ifc ife ifn ifg ifa ifl ifu adx sbx sti std jsr int iag ias rfi iaq hwn hwq hwi dat";
 
   function cppHook(stream, state) {
     if (!state.startOfLine) return false;
@@ -179,8 +136,6 @@ CodeMirror.defineMode("dasm", function(config, parserConfig) {
   CodeMirror.defineMIME("text/x-dasm", {
     name: "dasm",
     keywords: words(cKeywords),
-    blockKeywords: words("case do else for if switch while struct"),
-    atoms: words("null"),
     hooks: {"#": cppHook}
   });
 }());
