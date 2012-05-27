@@ -46,7 +46,7 @@ class File
 
     @mEditor = CodeMirror.fromTextArea(editor, {
       lineNumbers: true
-      mode: "text/x-csrc"
+      mode: "text/x-dasm"
       keyMap: "vim"
       onGutterClick: (cm,n,e) ->
         info = cm.lineInfo n

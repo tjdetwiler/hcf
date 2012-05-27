@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+  <head>
+    <title>CodeMirror: DCPU Assembly mode</title>
+    <link rel="stylesheet" href="../../lib/codemirror.css">
+    <script src="../../lib/codemirror.js"></script>
+    <script src="dasm.js"></script>
+    <link rel="stylesheet" href="../../doc/docs.css">
+    <style>.CodeMirror {border: 2px inset #dee;}</style>
+  </head>
+  <body>
+    <h1>CodeMirror: DCPU Assembly mode</h1>
+
+<form><textarea id="code" name="code">
+:start  ; Map framebuffer RAM
+        set a, 0
+        set b, 0x1000
+        hwi 0
+
+        set a, ohhey
+        jsr print
+
+        set a, 0
+        set b, 60
+        hwi 1
+        set a, 1
+:loop hwi 1
+        set pc, loop
+
+:print  set b, 0
+:print_loop
+        set c, [a]
+        ife c, 0
+        set pc, pop
+        bor c, 0x0f00
+        set [0x1000+b], c
+        add a, 1
+        add b, 1
+        set pc, print_loop
+:crash  set pc, crash
+</textarea></form>
+
+    <script>
+      var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
+        lineNumbers: true,
+        matchBrackets: true,
+        mode: "text/x-dasm"
+      });
+    </script>
+    <p><strong>MIME types defined:</strong> <code>text/x-dasm</code>
+  </body>
+</html>
