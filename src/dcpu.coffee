@@ -79,7 +79,7 @@ class Dcpu16
   # onPreExec:  fn(cpu, instr), where instr is the Instruction about to be executed.
   # onPostExec: fn(cpu, instr), where instr is the Instruction just executed.
   # onCondFail: fn(cpu, instr), where instr is the skipped Instruction.
-  # onPeriodic: fn(cpu)
+  # onPeriodic: fn(cpu), fired several times a second
   #
   onPreExec: (fn) -> @mPreExec = fn
   onPostExec: (fn) -> @mPostExec = fn
@@ -94,21 +94,21 @@ class Dcpu16
   # argument is defined, then the register is assigned to the value passed.
   # If the argument is undefined, then the function returns the register value.
   #
-  reg:      (n,v)   -> @mRegAccess[n](v)
-  regA:     (v)     -> @reg Value.REG_A, v
-  regB:     (v)     -> @reg Value.REG_B, v
-  regC:     (v)     -> @reg Value.REG_C, v
-  regX:     (v)     -> @reg Value.REG_X, v
-  regY:     (v)     -> @reg Value.REG_Y, v
-  regZ:     (v)     -> @reg Value.REG_Z, v
-  regI:     (v)     -> @reg Value.REG_I, v
-  regJ:     (v)     -> @reg Value.REG_J, v
-  regSP:    (v)     -> @reg Value.REG_SP, v
-  regEX:    (v)     -> @reg Value.REG_EX, v
-  regPC:    (v)     -> @reg Value.REG_PC, v
-  regIA:    (v)     -> @reg Value.REG_IA, v
-  readReg:  (n)     -> @reg n
-  writeReg: (n,val) -> @reg n, val
+  _reg:     (n,v)   -> @mRegAccess[n](v)
+  regA:     (v)     -> @_reg Value.REG_A, v
+  regB:     (v)     -> @_reg Value.REG_B, v
+  regC:     (v)     -> @_reg Value.REG_C, v
+  regX:     (v)     -> @_reg Value.REG_X, v
+  regY:     (v)     -> @_reg Value.REG_Y, v
+  regZ:     (v)     -> @_reg Value.REG_Z, v
+  regI:     (v)     -> @_reg Value.REG_I, v
+  regJ:     (v)     -> @_reg Value.REG_J, v
+  regSP:    (v)     -> @_reg Value.REG_SP, v
+  regEX:    (v)     -> @_reg Value.REG_EX, v
+  regPC:    (v)     -> @_reg Value.REG_PC, v
+  regIA:    (v)     -> @_reg Value.REG_IA, v
+  readReg:  (n)     -> @_reg n
+  writeReg: (n,val) -> @_reg n, val
 
   #
   # Memory Interface
@@ -159,15 +159,14 @@ class Dcpu16
   # pop:  Returns [SP++]
   #
   push: (v) ->
-    sp = @regSP()
+    sp = @regSP(@regSP()-1)
     @mMemory[sp] = v
-    @regSP(sp-1)
   peek: ( ) ->
     sp = @regSP()
     @mMemory[sp]
   pop:  ( ) ->
     sp = @regSP(@regSP()+1)
-    @mMemory[sp]
+    @mMemory[sp-1]
 
 
   #
@@ -191,6 +190,12 @@ class Dcpu16
 
     @loadBinary bin
 
+  #
+  # Source Map Helpers
+  #
+  # line2addr (file, line): returns the address of the instruction at file:line
+  # addr2line (addr): returns an object with "file" and "line" fields.
+  #
   line2addr: (f,l) -> @mSourceMap[f][l]
   addr2line: (a) -> @mSourceMap[a]
 
@@ -217,11 +222,7 @@ class Dcpu16
       clearInterval @mRunTimer
       @mRunTimer = null
   #
-  # Execution Control
-  #
-  # step: Execute one instruction
-  # run:  Run the CPU at full speed.
-  # stop: Stops the CPU.
+  # Execute one instruction (high level). For actual execution logic, see exec.
   #
   step: () ->
     i = @mDecoded
@@ -263,21 +264,10 @@ class Dcpu16
     @mDecoded = new Instr @mIStream
 
   #
-  # Sets an execution breakpoint
+  # Instruction execution logic
   #
-  # a: Address of the instruction to break on
-  # f: Callback when breakpoint is hit. Should be of the form:
-  #     (addr, type) ->
-  #   addr is breakpoint address
-  #   type is "r", "w", or "x" for read/write/execute
+  # TODO: Maybe attach this function to the Instr prototype
   #
-  # TODO: Support r/w breakpoints
-  #
-  breakpoint: (a,f) ->
-    @mBreakpoints[a] = f
-
-  next: () -> @mDecoded
-
   exec: (i) ->
     opc = i.opc()
     valA = i.valA()
@@ -315,6 +305,36 @@ class Dcpu16
     @regPC ia
     @regA n
     return true
+  #
+  # Sets an execution breakpoint
+  #
+  # a: Address of the instruction to break on
+  # f: Callback when breakpoint is hit. Should be of the form:
+  #     (addr, type) ->
+  #   addr is breakpoint address
+  #   type is "r", "w", or "x" for read/write/execute
+  #
+  # TODO: Support r/w breakpoints
+  #
+  breakpoint: (a,f) ->
+    @mBreakpoints[a] = f
+
+  catchFire: () ->
+    cpu = this
+    misbehave = () -> switch cpu.cycles() % 6
+      when 0 then cpu.regPC(cpu.regPC+2)
+      when 1 then cpu.regA(~cpu.regA)
+      when 2 then cpu.mCCFail = true
+      when 3 then cpu.interrupt 0xdead
+      when 4 then cpu.pop()
+      when 5 then cpu.push cpu.regPC()
+    setInterval misbehave, 1000
+
+  #
+  # Returns the next instruction to be executed.
+  #
+  next: () -> @mDecoded
+
 
   #
   # Signed Operation Helpers
@@ -526,5 +546,6 @@ class Dcpu16
     dev = @mDevices[i]
     if dev? then dev.hwInterrupt()
  
+  _exec_hcf: (a)   -> @catchFire()
 
 exports.Dcpu16 = Dcpu16

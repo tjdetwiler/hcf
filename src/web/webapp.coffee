@@ -253,22 +253,34 @@ $ () ->
 
 
 demoProgram = '
+; LEM1802/GenericTimer Test.\n
+;\n
+; If operating correctly, C and X should increment at 1Hz and a simple\n
+; message should appear on the framebuffer.\n
+;\n
+; If C increments, then the clocks hwi #1 is working correctly.\n
+; If X increments, then the clocks interrupts are working correctly.\n
+;\n
 :start  ; Map framebuffer RAM\n
         set a, 0\n
         set b, 0x1000\n
         hwi 0\n
 \n
+        ; Print a message\n
         set a, ohhey\n
         jsr print\n
 \n
+        ; Timer tick at 1Hz\n
         set a, 0\n
         set b, 60\n
         hwi 1\n
 \n
+        ; Timer interrupts on 2\n
         set a, 2\n
         set b, 2\n
         hwi 1\n
 \n
+        ; Set interrupt address\n
         ias isr\n
 \n
         set a, 1\n
@@ -287,11 +299,9 @@ demoProgram = '
         set pc, print_loop\n
 :crash  set pc, crash\n
 \n
-:isr    set a, pop\n
+:isr    add x, 1\n
+        set a, pop\n
         set pc, pop\n'
-#\n
-#:ohhey  dat "Generic-Clock Test"\n
-#        dat 0x0'
 
 demoProgramMsg = '
 :ohhey  dat "So the linker works (kinda).", 0

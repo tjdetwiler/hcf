@@ -101,6 +101,9 @@ class Value
       else
         @mValue = 0xffff
 
+  #
+  # TODO: Move this to Dcpu16
+  #
   get: (cpu) ->
     if @isMem and @isReg and @mNext?
       addr = @mNext
@@ -124,6 +127,9 @@ class Value
     else
       @mValue
     
+  #
+  # TODO: Move this to Dcpu16
+  #
   set: (cpu,val) ->
     if @isMem and @isReg and @mNext?
       addr = @mNext
@@ -216,9 +222,9 @@ class Instr
     @mParams = @_getParams()
 
   decode: (instr) ->
-    opcode = instr & @OPCODE_MASK()
-    valB   = (instr & @VALB_MASK()) >> 5
-    valA   = (instr & @VALA_MASK()) >> 10
+    opcode = instr & @OPCODE_MASK
+    valB   = (instr & @VALB_MASK) >> 5
+    valA   = (instr & @VALA_MASK) >> 10
 
     if opcode == 0
       valB = new Value @mIStream, valB, true
@@ -228,14 +234,13 @@ class Instr
 
     [opcode, valB, valA]
 
-
-  opc:  () -> @mOpc
-  valA: () -> @mValA
-  valB: () -> @mValB
-  addr: () -> @mAddr
-  cond: () -> @mParams.cond
-  cost: () -> @mParams.cost
-  
+  opc:    () -> @mOpc
+  valA:   () -> @mValA
+  valB:   () -> @mValB
+  addr:   () -> @mAddr
+  cond:   () -> @mParams.cond
+  cost:   () -> @mParams.cost
+  valid:  () -> @mParams?
 
   _getParams: () ->
     if @mOpc
@@ -243,13 +248,9 @@ class Instr
     else
       Instr.ADV_OPS[@mValA.raw()]
 
-
-  #
-  # Constants... there's probably (hopefully?) a better way to do this.
-  #
-  OPCODE_MASK: () -> 0x001f
-  VALB_MASK  : () -> 0x03e0
-  VALA_MASK  : () -> 0xfc00
+  OPCODE_MASK: 0x001f
+  VALB_MASK  : 0x03e0
+  VALA_MASK  : 0xfc00
 
 exports.Value = Value
 exports.Instr = Instr
