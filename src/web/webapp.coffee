@@ -18,7 +18,7 @@ GenericKeyboard = require('../hw/generic-keyboard').GenericKeyboard
 #
 # We rely on jQuery being already loaded
 #
-$         = window.$
+$ = window.$
 
 class File
   constructor: (name) ->
@@ -267,8 +267,15 @@ demoProgram = '
         set a, 0\n
         set b, 60\n
         hwi 1\n
+\n
+        set a, 2\n
+        set b, 2\n
+        hwi 1\n
+\n
+        ias isr\n
+\n
         set a, 1\n
-:loop hwi 1\n
+:loop   hwi 1\n
         set pc, loop\n
 \n
 :print  set b, 0\n
@@ -281,7 +288,10 @@ demoProgram = '
         add a, 1\n
         add b, 1\n
         set pc, print_loop\n
-:crash  set pc, crash\n'
+:crash  set pc, crash\n
+\n
+:isr    set a, pop\n
+        set pc, pop\n'
 #\n
 #:ohhey  dat "Generic-Clock Test"\n
 #        dat 0x0'

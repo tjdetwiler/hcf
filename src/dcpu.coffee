@@ -9,10 +9,7 @@
 #
 Module = {}
 
-decode            = require './dcpu-decode'
-
-#TEMP:
-Disasm            = require('./dcpu-disasm').Disasm
+decode = require './dcpu-decode'
 
 Value = decode.Value
 Instr = decode.Instr
@@ -193,7 +190,7 @@ class Dcpu16
   run: () ->
     cpu = this
     cb = () ->
-      for i in [0..10001]
+      for i in [0..10345]
         cpu.step()
     if @mRunTimer then clearInterval @timer
     @mRunTimer = setInterval cb, 50
@@ -226,10 +223,12 @@ class Dcpu16
     # Take an IRQ if pending and we're running (no irqs in single-step mode)
     #
     if @mPendingIrq
-      @doInterrupt @mPendingIrq
+      taken = @doInterrupt @mPendingIrq
       @mPendingIrq = null
-      i = new Instr @mIStream
-      return
+      #
+      # If we've vectored to IA, fetch the correct instruction
+      #
+      if taken then i = new Instr @mIStream
 
     #
     # Execute and fire events
@@ -287,18 +286,16 @@ class Dcpu16
 
     # Check IA
     if ia == 0
-      return
+      return false
 
-    # Check if interrupt queueing enabled
-    if @mIntQueuOn
-      # TODO: put interrupt in queue
-      return
+    # TODO: Check if interrupt queueing enabled
+    # TODO: Put interrupt in queue
 
-    @mIntQueueOn = true
-    @push @regPC()
+    @push @mDecoded.addr()
     @push @regA()
-    @regPC @regIA()
+    @regPC ia
     @regA n
+    return true
 
   #
   # Signed Operation Helpers

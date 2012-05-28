@@ -204,10 +204,8 @@ class Instr
 
   constructor: (stream) ->
     @mIStream = stream
-    @mAddr = @mIStream.index()
-    addr = @mIStream.getPC()
-    word = @mIStream.nextWord()
-    [@mOpc, @mValA, @mValB] = @decode word
+    @mAddr = @mIStream.getPC()
+    [@mOpc, @mValA, @mValB] = @decode @mIStream.nextWord()
     @mParams = @_getParams()
 
   decode: (instr) ->

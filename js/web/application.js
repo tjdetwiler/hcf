@@ -341,458 +341,6 @@ exports.extname = function(path) {
 
 });
 
-require.define("/dcpu-decode.coffee", function (require, module, exports, __dirname, __filename) {
-(function() {
-  var IStream, Instr, Module, Value;
-
-  Module = {};
-
-  IStream = (function() {
-
-    function IStream(instrs, base) {
-      if (base == null) base = 0;
-      this.mStream = instrs;
-      this.mIndex = base;
-    }
-
-    IStream.prototype.nextWord = function() {
-      return this.mStream[this.mIndex++];
-    };
-
-    IStream.prototype.index = function(v) {
-      if (v != null) {
-        return this.mIndex = v;
-      } else {
-        return this.mIndex;
-      }
-    };
-
-    IStream.prototype.setPC = function(v) {
-      return this.index(v);
-    };
-
-    IStream.prototype.getPC = function() {
-      return this.index();
-    };
-
-    return IStream;
-
-  })();
-
-  Value = (function() {
-    var _i, _ref, _results;
-
-    _ref = (function() {
-      _results = [];
-      for (var _i = 0x0; 0x0 <= 0xb ? _i <= 0xb : _i >= 0xb; 0x0 <= 0xb ? _i++ : _i--){ _results.push(_i); }
-      return _results;
-    }).apply(this), Value.REG_A = _ref[0], Value.REG_B = _ref[1], Value.REG_C = _ref[2], Value.REG_X = _ref[3], Value.REG_Y = _ref[4], Value.REG_Z = _ref[5], Value.REG_I = _ref[6], Value.REG_J = _ref[7], Value.REG_PC = _ref[8], Value.REG_SP = _ref[9], Value.REG_EX = _ref[10], Value.REG_IA = _ref[11];
-
-    Value.VAL_POP = 0x18;
-
-    Value.VAL_PUSH = 0x18;
-
-    Value.VAL_PEEK = 0x19;
-
-    Value.VAL_PICK = 0x1a;
-
-    Value.VAL_SP = 0x1b;
-
-    Value.VAL_PC = 0x1c;
-
-    Value.VAL_EX = 0x1d;
-
-    function Value(stream, enc, raw) {
-      if (raw == null) raw = false;
-      this.mIStream = stream;
-      this.isMem = false;
-      this.isReg = false;
-      this.mEncoding = enc;
-      this.mNext = void 0;
-      if (raw) {
-        this.mValue = enc;
-        return;
-      }
-      if ((0x00 <= enc && enc <= 0x07)) {
-        this.isReg = true;
-        this.mValue = enc;
-      } else if ((0x08 <= enc && enc <= 0x0f)) {
-        this.isMem = true;
-        this.isReg = true;
-        this.mValue = enc - 0x08;
-      } else if ((0x10 <= enc && enc <= 0x17)) {
-        this.isMem = true;
-        this.isReg = true;
-        this.mNext = this.mIStream.nextWord();
-        this.mValue = enc - 0x10;
-      } else if (enc === Value.VAL_POP) {
-        "";
-      } else if (enc === Value.VAL_PEEK) {
-        "";
-      } else if (enc === Value.VAL_PICK) {
-        this.mNext = this.mIStream.nextWord();
-      } else if (enc === Value.VAL_SP) {
-        this.isReg = true;
-        this.mValue = Value.REG_SP;
-      } else if (enc === Value.VAL_PC) {
-        this.isReg = true;
-        this.mValue = Value.REG_PC;
-      } else if (enc === Value.VAL_EX) {
-        this.isReg = true;
-        this.mValue = Value.REG_EX;
-      } else if (enc === 0x1e) {
-        this.isMem = true;
-        this.mNext = this.mIStream.nextWord();
-        this.mValue = this.mNext;
-      } else if (enc === 0x1f) {
-        this.mNext = this.mIStream.nextWord();
-        this.mValue = this.mNext;
-      } else if ((0x20 <= enc && enc <= 0x3f)) {
-        if (enc) {
-          this.mValue = enc - 0x21;
-        } else {
-          this.mValue = 0xffff;
-        }
-      }
-    }
-
-    Value.prototype.get = function(cpu) {
-      var addr, sp;
-      if (this.isMem && this.isReg && (this.mNext != null)) {
-        addr = this.mNext;
-        addr += cpu.readReg(this.mValue);
-        return cpu.readMem(addr);
-      } else if (this.isMem && this.isReg) {
-        addr = cpu.readReg(this.mValue);
-        return cpu.readMem(addr);
-      } else if (this.isMem) {
-        return cpu.readMem(this.mValue);
-      } else if (this.isReg) {
-        return cpu.readReg(this.mValue);
-      } else if (this.mEncoding === Value.VAL_POP) {
-        return cpu.pop();
-      } else if (this.mEncoding === Value.VAL_PEEK) {
-        return cpu.peek();
-      } else if (this.mEncoding === Value.VAL_PICK) {
-        sp = cpu.regSP();
-        addr = sp + this.mNext;
-        return cpu.readMem(addr);
-      } else {
-        return this.mValue;
-      }
-    };
-
-    Value.prototype.set = function(cpu, val) {
-      var addr, sp;
-      if (this.isMem && this.isReg && (this.mNext != null)) {
-        addr = this.mNext;
-        addr += cpu.readReg(this.mValue);
-        return cpu.writeMem(addr, val);
-      } else if (this.isMem && this.isReg) {
-        addr = cpu.readReg(this.mValue);
-        return cpu.writeMem(addr, val);
-      } else if (this.isMem) {
-        return cpu.writeMem(this.mValue, val);
-      } else if (this.isReg) {
-        return cpu.writeReg(this.mValue, val);
-      } else if (this.mEncoding === Value.VAL_PUSH) {
-        return cpu.push(val);
-      } else if (this.mEncoding === Value.VAL_PEEK) {
-        return console.log("ERROR: Trying to 'set' PEEK");
-      } else if (this.mEncoding === Value.VAL_PICK) {
-        sp = cpu.regSP();
-        addr = sp + this.mNext;
-        return cpu.writeMem(addr, val);
-      } else {
-        return console.log("Error: Attempt to 'set' a literal value");
-      }
-    };
-
-    Value.prototype.raw = function() {
-      return this.mEncoding;
-    };
-
-    return Value;
-
-  })();
-
-  Instr = (function() {
-
-    Instr.BASIC_OPS = [
-      Instr.OPC_ADV = {
-        op: 0x00,
-        id: "adv",
-        cost: 0,
-        cond: false
-      }, Instr.OPC_SET = {
-        op: 0x01,
-        id: "set",
-        cost: 1,
-        cond: false
-      }, Instr.OPC_ADD = {
-        op: 0x02,
-        id: "add",
-        cost: 2,
-        cond: false
-      }, Instr.OPC_SUB = {
-        op: 0x03,
-        id: "sub",
-        cost: 2,
-        cond: false
-      }, Instr.OPC_MUL = {
-        op: 0x04,
-        id: "mul",
-        cost: 2,
-        cond: false
-      }, Instr.OPC_MLI = {
-        op: 0x05,
-        id: "mli",
-        cost: 2,
-        cond: false
-      }, Instr.OPC_DIV = {
-        op: 0x06,
-        id: "div",
-        cost: 3,
-        cond: false
-      }, Instr.OPC_DVI = {
-        op: 0x07,
-        id: "dvi",
-        cost: 3,
-        cond: false
-      }, Instr.OPC_MOD = {
-        op: 0x08,
-        id: "mod",
-        cost: 3,
-        cond: false
-      }, Instr.OPC_MDI = {
-        op: 0x09,
-        id: "mdi",
-        cost: 3,
-        cond: false
-      }, Instr.OPC_AND = {
-        op: 0x0a,
-        id: "and",
-        cost: 1,
-        cond: false
-      }, Instr.OPC_BOR = {
-        op: 0x0b,
-        id: "bor",
-        cost: 1,
-        cond: false
-      }, Instr.OPC_XOR = {
-        op: 0x0c,
-        id: "xor",
-        cost: 1,
-        cond: false
-      }, Instr.OPC_SHR = {
-        op: 0x0d,
-        id: "shr",
-        cost: 1,
-        cond: false
-      }, Instr.OPC_ASR = {
-        op: 0x0e,
-        id: "asr",
-        cost: 1,
-        cond: false
-      }, Instr.OPC_SHL = {
-        op: 0x0f,
-        id: "shl",
-        cost: 1,
-        cond: false
-      }, Instr.OPC_IFB = {
-        op: 0x10,
-        id: "ifb",
-        cost: 2,
-        cond: true
-      }, Instr.OPC_IFC = {
-        op: 0x11,
-        id: "ifc",
-        cost: 2,
-        cond: true
-      }, Instr.OPC_IFE = {
-        op: 0x12,
-        id: "ife",
-        cost: 2,
-        cond: true
-      }, Instr.OPC_IFN = {
-        op: 0x13,
-        id: "ifn",
-        cost: 2,
-        cond: true
-      }, Instr.OPC_IFG = {
-        op: 0x14,
-        id: "ifg",
-        cost: 2,
-        cond: true
-      }, Instr.OPC_IFA = {
-        op: 0x15,
-        id: "ifa",
-        cost: 2,
-        cond: true
-      }, Instr.OPC_IFL = {
-        op: 0x16,
-        id: "ifl",
-        cost: 2,
-        cond: true
-      }, Instr.OPC_IFU = {
-        op: 0x17,
-        id: "ifu",
-        cost: 2,
-        cond: true
-      }, Instr.OPC_ADX = {
-        op: 0x1a,
-        id: "adx",
-        cost: 3,
-        cond: false
-      }, Instr.OPC_SBX = {
-        op: 0x1b,
-        id: "sbx",
-        cost: 3,
-        cond: false
-      }, void 0, void 0, Instr.OPC_STI = {
-        op: 0x1e,
-        id: "sti",
-        cost: 2,
-        cond: false
-      }, Instr.OPC_STD = {
-        op: 0x1f,
-        id: "std",
-        cost: 2,
-        cond: false
-      }
-    ];
-
-    Instr.ADV_OPS = [
-      void 0, Instr.ADV_JSR = {
-        op: 0x01,
-        id: "jsr",
-        cost: 3,
-        cond: false
-      }, void 0, void 0, void 0, void 0, void 0, void 0, Instr.ADV_INT = {
-        op: 0x08,
-        id: "int",
-        cost: 4,
-        cond: false
-      }, Instr.ADV_IAG = {
-        op: 0x09,
-        id: "iag",
-        cost: 1,
-        cond: false
-      }, Instr.ADV_IAS = {
-        op: 0x0a,
-        id: "ias",
-        cost: 1,
-        cond: false
-      }, Instr.ADV_RFI = {
-        op: 0x0b,
-        id: "rfi",
-        cost: 3,
-        cond: false
-      }, Instr.ADV_IAQ = {
-        op: 0x0c,
-        id: "iaq",
-        cost: 2,
-        cond: false
-      }, void 0, void 0, void 0, Instr.ADV_HWN = {
-        op: 0x10,
-        id: "hwn",
-        cost: 2,
-        cond: false
-      }, Instr.ADV_HWQ = {
-        op: 0x11,
-        id: "hwq",
-        cost: 4,
-        cond: false
-      }, Instr.ADV_HWI = {
-        op: 0x12,
-        id: "hwi",
-        cost: 4,
-        cond: false
-      }
-    ];
-
-    function Instr(stream) {
-      var addr, word, _ref;
-      this.mIStream = stream;
-      this.mAddr = this.mIStream.index();
-      addr = this.mIStream.getPC();
-      word = this.mIStream.nextWord();
-      _ref = this.decode(word), this.mOpc = _ref[0], this.mValA = _ref[1], this.mValB = _ref[2];
-      this.mParams = this._getParams();
-    }
-
-    Instr.prototype.decode = function(instr) {
-      var opcode, valA, valB;
-      opcode = instr & this.OPCODE_MASK();
-      valB = (instr & this.VALB_MASK()) >> 5;
-      valA = (instr & this.VALA_MASK()) >> 10;
-      if (opcode === 0) {
-        valB = new Value(this.mIStream, valB, true);
-      } else {
-        valB = new Value(this.mIStream, valB);
-      }
-      valA = new Value(this.mIStream, valA);
-      return [opcode, valB, valA];
-    };
-
-    Instr.prototype.opc = function() {
-      return this.mOpc;
-    };
-
-    Instr.prototype.valA = function() {
-      return this.mValA;
-    };
-
-    Instr.prototype.valB = function() {
-      return this.mValB;
-    };
-
-    Instr.prototype.addr = function() {
-      return this.mAddr;
-    };
-
-    Instr.prototype.cond = function() {
-      return this.mParams.cond;
-    };
-
-    Instr.prototype.cost = function() {
-      return this.mParams.cost;
-    };
-
-    Instr.prototype._getParams = function() {
-      if (this.mOpc) {
-        return Instr.BASIC_OPS[this.mOpc];
-      } else {
-        return Instr.ADV_OPS[this.mValA.raw()];
-      }
-    };
-
-    Instr.prototype.OPCODE_MASK = function() {
-      return 0x001f;
-    };
-
-    Instr.prototype.VALB_MASK = function() {
-      return 0x03e0;
-    };
-
-    Instr.prototype.VALA_MASK = function() {
-      return 0xfc00;
-    };
-
-    return Instr;
-
-  })();
-
-  exports.Value = Value;
-
-  exports.Instr = Instr;
-
-  exports.IStream = IStream;
-
-}).call(this);
-
-});
-
 require.define("/dcpu-disasm.coffee", function (require, module, exports, __dirname, __filename) {
 (function() {
   var Disasm, Instr, Module, decode;
@@ -890,6 +438,614 @@ require.define("/dcpu-disasm.coffee", function (require, module, exports, __dirn
 
 });
 
+require.define("/dcpu-asm.coffee", function (require, module, exports, __dirname, __filename) {
+(function() {
+  var Assembler, Data, Instr, Instruction, JobLinker, LitValue, MemValue, Module, RawValue, RegValue, Value, dasm, decode;
+
+  Module = {};
+
+  decode = require('./dcpu-decode');
+
+  dasm = require('./dcpu-disasm');
+
+  Instr = decode.Instr;
+
+  Value = decode.Value;
+
+  RegValue = (function() {
+
+    function RegValue(asm, reg) {
+      this.mAsm = asm;
+      this.mReg = reg;
+    }
+
+    RegValue.prototype.emit = function() {};
+
+    RegValue.prototype.encode = function() {
+      return this.mReg;
+    };
+
+    return RegValue;
+
+  })();
+
+  MemValue = (function() {
+
+    function MemValue(asm, reg, lit) {
+      if (reg == null) reg = void 0;
+      if (lit == null) lit = void 0;
+      this.mAsm = asm;
+      this.mReg = reg;
+      this.mLit = lit;
+    }
+
+    MemValue.prototype.emit = function() {
+      if (!(this.mLit != null)) return;
+      return this.mLit.value();
+    };
+
+    MemValue.prototype.encode = function() {
+      if ((this.mLit != null) && (this.mReg != null) && !this.mLit.isLabel()) {
+        return this.mReg + 0x10;
+      } else if (this.mReg != null) {
+        return this.mReg + 0x8;
+      } else if (this.mLit != null) {
+        return 0x1e;
+      } else {
+        return console.log("ERROR: MemValue with corrupted state.");
+      }
+    };
+
+    return MemValue;
+
+  })();
+
+  LitValue = (function() {
+
+    function LitValue(asm, lit) {
+      var n;
+      this.mAsm = asm;
+      this.mLit = lit;
+      if ((n = parseInt(lit))) this.mLit = n;
+      if (this.mLit > 0x1f || this.isLabel()) this.mAsm.incPc();
+    }
+
+    LitValue.prototype.isLabel = function() {
+      return isNaN(this.mLit);
+    };
+
+    LitValue.prototype.value = function() {
+      var addr;
+      if (this.isLabel()) {
+        addr = this.mAsm.lookup(this.mLit);
+        if (!(addr != null)) console.log("Undefined label '" + this.mLit + "'");
+        return addr;
+      } else {
+        return this.mLit;
+      }
+    };
+
+    LitValue.prototype.emit = function() {
+      if (this.isLabel()) {
+        return this.mLit;
+      } else if (this.mLit > 0x1e || this.isLabel()) {
+        return this.value();
+      }
+    };
+
+    LitValue.prototype.encode = function() {
+      if (this.mLit === -1) {
+        return 0x20;
+      } else if (this.mLit > 0x1f || this.isLabel()) {
+        return 0x1f;
+      } else {
+        return this.mLit + 0x21;
+      }
+    };
+
+    return LitValue;
+
+  })();
+
+  RawValue = (function() {
+
+    function RawValue(asm, raw) {
+      this.mAsm = asm;
+      this.mRaw = raw;
+    }
+
+    RawValue.prototype.emit = function() {};
+
+    RawValue.prototype.encode = function() {
+      return this.mRaw;
+    };
+
+    return RawValue;
+
+  })();
+
+  Data = (function() {
+
+    function Data(asm, dat) {
+      this.mAsm = asm;
+      this.mData = dat;
+      this.mFile = asm.file();
+      this.mLine = asm.line();
+    }
+
+    Data.prototype.emit = function(stream) {
+      return stream.push({
+        val: this.mData,
+        file: this.mFile,
+        line: this.mLine
+      });
+    };
+
+    return Data;
+
+  })();
+
+  Instruction = (function() {
+
+    function Instruction(asm, opc, vals) {
+      this.mAsm = asm;
+      this.mLine = 0;
+      this.mSize = 0;
+      this.mOp = opc;
+      this.mVals = vals;
+      this.mFile = asm.file();
+      this.mLine = asm.line();
+    }
+
+    Instruction.prototype.emit = function(stream) {
+      var enc, instr, v, _i, _len, _ref, _results;
+      enc = (function() {
+        var _i, _len, _ref, _results;
+        _ref = this.mVals;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          v = _ref[_i];
+          _results.push(v.encode());
+        }
+        return _results;
+      }).call(this);
+      instr = this.mOp | (enc[0] << 5) | (enc[1] << 10);
+      stream.push({
+        val: instr,
+        file: this.mFile,
+        line: this.mLine
+      });
+      _ref = this.mVals;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        v = _ref[_i];
+        if ((enc = v.emit()) != null) {
+          _results.push(stream.push({
+            val: enc,
+            file: this.mFile,
+            line: this.mLine
+          }));
+        } else {
+          _results.push(void 0);
+        }
+      }
+      return _results;
+    };
+
+    return Instruction;
+
+  })();
+
+  JobLinker = (function() {
+
+    function JobLinker() {}
+
+    JobLinker.mergeSyms = function(a, b, o) {
+      var k, v, _results;
+      _results = [];
+      for (k in b) {
+        v = b[k];
+        if (a[k] != null) {
+          _results.push(console.log("Warning, redefinition of symbol '" + k + "'"));
+        } else {
+          _results.push(a[k] = v + o);
+        }
+      }
+      return _results;
+    };
+
+    JobLinker.link = function(jobs) {
+      var addr, code, i, job, r, syms, v, _i, _len, _len2;
+      code = [];
+      syms = {};
+      for (_i = 0, _len = jobs.length; _i < _len; _i++) {
+        job = jobs[_i];
+        this.mergeSyms(syms, job.sections[0].sym, code.length);
+        code = code.concat(job.sections[0].data);
+      }
+      for (i = 0, _len2 = code.length; i < _len2; i++) {
+        v = code[i];
+        if ((addr = syms[v.val]) != null) {
+          code[i] = {
+            val: addr,
+            file: v.file,
+            line: v.line
+          };
+        } else if (isNaN(v.val)) {
+          console.log("Error: Undefined Symbol '" + v + "'");
+        }
+      }
+      return r = {
+        format: "job",
+        version: 0.1,
+        source: "Tims Linker",
+        sections: [
+          {
+            name: ".text",
+            data: code,
+            sym: syms
+          }
+        ]
+      };
+    };
+
+    return JobLinker;
+
+  })();
+
+  Assembler = (function() {
+
+    Assembler.reg_regex = /^([a-zA-Z_]+)/;
+
+    Assembler.ireg_regex = /^\[\s*([a-zA-Z]+|\d+)\s*\]/;
+
+    Assembler.lit_regex = /^(0[xX][0-9a-fA-F]+|\d+)/;
+
+    Assembler.ilit_regex = /^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]/;
+
+    Assembler.arr_regex = /^\[\s*([0-9a-zA-Z]+)\s*\+\s*([0-9a-zA-Z]+)\s*\]/;
+
+    Assembler.str_regex = /"([^"]*)"/;
+
+    Assembler.basic_regex = /(\w+)\s+([^,]+)\s*,\s*([^,]+)/;
+
+    Assembler.adv_regex = /(\w+)\s+([^,]+)/;
+
+    Assembler.dir_regex = /(\.[a-zA-Z0-9]+)(.*)/;
+
+    Assembler.LINE_PARSERS = [
+      Assembler.LP_EMPTY = {
+        match: /^$/,
+        f: 'lpEmpty'
+      }, Assembler.LP_DIRECT = {
+        match: Assembler.dir_regex,
+        f: 'lpDirect'
+      }, Assembler.LP_DAT = {
+        match: /^[dD][aA][tT].*/,
+        f: 'lpDat'
+      }, Assembler.LP_COMMENT = {
+        match: /^;.*/,
+        f: 'lpComment'
+      }, Assembler.LP_LABEL = {
+        match: /^:.*/,
+        f: 'lpLabel'
+      }, Assembler.LP_ISIMP = {
+        match: Assembler.basic_regex,
+        f: 'lpIBasic'
+      }, Assembler.LP_IADV = {
+        match: Assembler.adv_regex,
+        f: 'lpIAdv'
+      }
+    ];
+
+    Assembler.VALUE_PARSERS = [
+      Assembler.VP_WORD = {
+        match: Assembler.reg_regex,
+        f: 'vpWord'
+      }, Assembler.VP_IWORD = {
+        match: Assembler.ireg_regex,
+        f: 'vpIWord'
+      }, Assembler.VP_LIT = {
+        match: Assembler.lit_regex,
+        f: 'vpLit'
+      }, Assembler.VP_ILIT = {
+        match: Assembler.ilit_regex,
+        f: 'vpILit'
+      }, Assembler.VP_ARR = {
+        match: Assembler.arr_regex,
+        f: 'vpArr'
+      }
+    ];
+
+    Assembler.DIRECTS = [
+      Assembler.DIR_GLOBAL = {
+        id: ".globl",
+        f: 'dirGlobal'
+      }, Assembler.DIR_GLOBAL0 = {
+        id: ".global",
+        f: 'dirGlobal'
+      }, Assembler.DIR_TEXT = {
+        id: ".text",
+        f: 'dirText'
+      }, Assembler.DIR_DATA = {
+        id: ".data",
+        f: 'dirData'
+      }
+    ];
+
+    function Assembler() {
+      var op, _i, _j, _len, _len2, _ref, _ref2;
+      this.mPc = 0;
+      this.mText = "";
+      this.mLabels = {};
+      this.mExports = {};
+      this.mInstrs = {};
+      this.mOpcDict = {};
+      this.mSect = ".text";
+      _ref = Instr.BASIC_OPS;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        op = _ref[_i];
+        if (op != null) this.mOpcDict[op.id.toUpperCase()] = op;
+      }
+      _ref2 = Instr.ADV_OPS;
+      for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+        op = _ref2[_j];
+        if (op != null) this.mOpcDict[op.id.toUpperCase()] = op;
+      }
+      this.mFile = "undefined";
+      this.mLine = 0;
+    }
+
+    Assembler.prototype.label = function(name, addr) {
+      if (!(this.mLabels[this.mSect] != null)) this.mLabels[this.mSect] = {};
+      return this.mLabels[this.mSect][name] = addr;
+    };
+
+    Assembler.prototype["export"] = function(name, addr) {
+      if (!(this.mExports[this.mSect] != null)) this.mExports[this.mSect] = {};
+      return this.mExports[this.mSect][name] = addr;
+    };
+
+    Assembler.prototype.lookup = function(name) {
+      return this.mLabels[this.mSect][name];
+    };
+
+    Assembler.prototype.defined = function(name) {
+      return lookup(name) != null;
+    };
+
+    Assembler.prototype.incPc = function() {
+      return ++this.mPc;
+    };
+
+    Assembler.prototype.processValue = function(val) {
+      var match, vp, _i, _len, _ref;
+      val = val.trim();
+      _ref = Assembler.VALUE_PARSERS;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        vp = _ref[_i];
+        if (match = val.match(vp.match)) return this[vp.f](match);
+      }
+      return console.log("Unmatched value: " + val);
+    };
+
+    Assembler.prototype.processLine = function(line) {
+      var lp, match, _i, _len, _ref;
+      line = line.trim();
+      _ref = Assembler.LINE_PARSERS;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        lp = _ref[_i];
+        if (match = line.match(lp.match)) return this[lp.f](match);
+      }
+      return console.log("Unmatched line: " + line);
+    };
+
+    Assembler.prototype.out = function(i) {
+      if (!(this.mInstrs[this.mSect] != null)) this.mInstrs[this.mSect] = [];
+      return this.mInstrs[this.mSect].push(i);
+    };
+
+    Assembler.prototype.emit = function(sec, stream) {
+      var i, _i, _len, _ref, _results;
+      _ref = this.mInstrs[sec];
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        i = _ref[_i];
+        _results.push(i.emit(stream));
+      }
+      return _results;
+    };
+
+    Assembler.prototype.assemble = function(text, fn) {
+      var i, l, lines, prog, r, s, sections, _i, _len, _ref;
+      if (fn == null) fn = "undefined";
+      lines = text.split("\n");
+      this.mFile = fn;
+      i = 0;
+      for (_i = 0, _len = lines.length; _i < _len; _i++) {
+        l = lines[_i];
+        this.mLine = i++;
+        this.processLine(l);
+      }
+      sections = [];
+      _ref = this.mInstrs;
+      for (s in _ref) {
+        i = _ref[s];
+        prog = [];
+        this.emit(s, prog);
+        sections.push({
+          name: s,
+          data: prog,
+          sym: this.mLabels[s]
+        });
+      }
+      return r = {
+        format: "job",
+        version: 0.1,
+        source: "Tims Assembler",
+        sections: sections
+      };
+    };
+
+    Assembler.prototype.assembleAndLink = function(text) {
+      var exe, job;
+      job = this.assemble(text);
+      return exe = JobLinker.link([job]);
+    };
+
+    Assembler.prototype.line = function() {
+      return this.mLine;
+    };
+
+    Assembler.prototype.file = function() {
+      return this.mFile;
+    };
+
+    Assembler.prototype.lpEmpty = function(match) {};
+
+    Assembler.prototype.lpDirect = function(match) {
+      var d, name, _i, _len, _ref;
+      name = match[1].toUpperCase();
+      console.log("Directive '" + name + "'");
+      _ref = Assembler.DIRECTS;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        d = _ref[_i];
+        if (name === d.id.toUpperCase()) return this[d.f](match);
+      }
+    };
+
+    Assembler.prototype.lpComment = function(match) {};
+
+    Assembler.prototype.lpDat = function(match) {
+      var c, n, tok, toks, _i, _len, _results;
+      toks = match[0].match(/[^ \t]+/g).slice(1).join(" ").split(",");
+      _results = [];
+      for (_i = 0, _len = toks.length; _i < _len; _i++) {
+        tok = toks[_i];
+        tok = tok.trim();
+        if (tok[0] === ";") break;
+        if (match = tok.match(Assembler.str_regex)) {
+          _results.push((function() {
+            var _j, _len2, _ref, _results2;
+            _ref = match[1];
+            _results2 = [];
+            for (_j = 0, _len2 = _ref.length; _j < _len2; _j++) {
+              c = _ref[_j];
+              _results2.push(this.out(new Data(this, c.charCodeAt(0))));
+            }
+            return _results2;
+          }).call(this));
+        } else if ((n = parseInt(tok)) != null) {
+          _results.push(this.out(new Data(this, n)));
+        } else {
+          _results.push(console.log("Bad Data String: '" + tok + "'"));
+        }
+      }
+      return _results;
+    };
+
+    Assembler.prototype.lpLabel = function(match) {
+      var toks;
+      toks = match[0].match(/[^ \t]+/g);
+      this.label(toks[0].slice(1), this.mPc);
+      return this.processLine(toks.slice(1).join(" "));
+    };
+
+    Assembler.prototype.lpIBasic = function(match) {
+      var enc, opc, valA, valB, _ref;
+      _ref = match.slice(1, 4), opc = _ref[0], valA = _ref[1], valB = _ref[2];
+      enc = this.mOpcDict[opc.toUpperCase()].op;
+      this.incPc();
+      valA = this.processValue(valA);
+      valB = this.processValue(valB);
+      return this.out(new Instruction(this, enc, [valA, valB]));
+    };
+
+    Assembler.prototype.lpIAdv = function(match) {
+      var enc, opc, valA, valB, _ref;
+      _ref = match.slice(1, 3), opc = _ref[0], valA = _ref[1];
+      if (opc === 'b') return console.log("Branch " + valA);
+      enc = this.mOpcDict[opc.toUpperCase()].op;
+      this.incPc();
+      valB = this.processValue(valA);
+      valA = new RawValue(this, enc);
+      return this.out(new Instruction(this, 0, [valA, valB]));
+    };
+
+    Assembler.prototype.vpWord = function(match) {
+      var regid;
+      switch (match[1].toUpperCase()) {
+        case "POP":
+          return new RawValue(this, Value.VAL_POP);
+        case "PUSH":
+          return new RawValue(this, Value.VAL_PUSH);
+        case "PEEK":
+          return new RawValue(this, Value.VAL_PEEK);
+        case "SP":
+          return new RawValue(this, Value.VAL_SP);
+        case "PC":
+          return new RawValue(this, Value.VAL_PC);
+        case "EX":
+          return new RawValue(this, Value.VAL_EX);
+        default:
+          regid = dasm.Disasm.REG_DISASM.indexOf(match[1].toUpperCase());
+          if (regid === -1) {
+            return new LitValue(this, match[1]);
+          } else {
+            return new RegValue(this, regid);
+          }
+      }
+    };
+
+    Assembler.prototype.vpIWord = function(match) {
+      var regid;
+      regid = dasm.Disasm.REG_DISASM.indexOf(match[1].toUpperCase());
+      if (regid === -1) {
+        return new MemValue(this, void 0, new LitValue(this, match[1]));
+      } else {
+        return new MemValue(this, regid, void 0);
+      }
+    };
+
+    Assembler.prototype.vpLit = function(match) {
+      return new LitValue(this, parseInt(match[1]));
+    };
+
+    Assembler.prototype.vpILit = function(match) {
+      var n;
+      n = parseInt(match[1]);
+      return new MemValue(this, void 0, new LitValue(this, n));
+    };
+
+    Assembler.prototype.vpArr = function(match) {
+      var r;
+      if ((r = dasm.Disasm.REG_DISASM.indexOf(match[2].toUpperCase())) !== -1) {
+        return new MemValue(this, r, new LitValue(this, match[1]));
+      }
+      if ((r = dasm.Disasm.REG_DISASM.indexOf(match[1].toUpperCase())) !== -1) {
+        return new MemValue(this, r, new LitValue(this, match[2]));
+      } else {
+        return console.log("Unmatched value " + match[0]);
+      }
+    };
+
+    Assembler.prototype.dirGlobal = function(match) {
+      console.log("exporting '" + match[2] + "'");
+      return this["export"](match[2]);
+    };
+
+    return Assembler;
+
+  })();
+
+  exports.Assembler = Assembler;
+
+  exports.JobLinker = JobLinker;
+
+}).call(this);
+
+});
+
 require.define("/hw/lem1802.coffee", function (require, module, exports, __dirname, __filename) {
 (function() {
   var Device, Lem1802, Module;
@@ -915,7 +1071,9 @@ require.define("/hw/lem1802.coffee", function (require, module, exports, __dirna
       this.mScreen = void 0;
       this.mUserFont = void 0;
       this.mUserPalette = void 0;
+      this.mBorderColor = 4;
       this.clear();
+      this.drawBorder(this.mBorderColor);
     }
 
     Lem1802.prototype.id = function() {
@@ -1016,11 +1174,15 @@ require.define("/hw/lem1802.coffee", function (require, module, exports, __dirna
     };
 
     Lem1802.prototype.setBorderColor = function() {
-      return;
+      return this.drawBorder(this.mBorderColor = this.mCpu.regB() & 0xf);
     };
 
     Lem1802.prototype.readFontRam = function(i) {
-      return Lem1802.DFL_FONT[i];
+      if (this.mFont != null) {
+        return this.mFont[i];
+      } else {
+        return Lem1802.DFL_FONT[i];
+      }
     };
 
     Lem1802.prototype.readPaletteRam = function(i) {
@@ -1071,20 +1233,55 @@ require.define("/hw/lem1802.coffee", function (require, module, exports, __dirna
       return _results;
     };
 
+    Lem1802.prototype.drawBorder = function(c) {
+      var x, y, _ref, _ref2, _results;
+      c = c << 8;
+      for (x = 0, _ref = this.WIDTH + 1; 0 <= _ref ? x <= _ref : x >= _ref; 0 <= _ref ? x++ : x--) {
+        this.drawChar(x, 0, c);
+        this.drawChar(x, this.HEIGHT + 1, c);
+      }
+      _results = [];
+      for (y = 0, _ref2 = this.HEIGHT + 1; 0 <= _ref2 ? y <= _ref2 : y >= _ref2; 0 <= _ref2 ? y++ : y--) {
+        this.drawChar(0, y, c);
+        _results.push(this.drawChar(this.WIDTH + 1, y, c));
+      }
+      return _results;
+    };
+
     Lem1802.prototype.clear = function() {
       if (!(this.mCtx != null)) return;
       this.mCtx.fillStyle = this.rgbString(this.readPaletteRam(0xf));
-      return this.mCtx.fillRect(0, 0, 128 * this.mScale, 96 * this.mScale);
+      this.mCtx.fillRect(0, 0, (this.WIDTH + 2) * 4 * this.mScale, (this.HEIGHT + 2) * 8 * this.mScale);
+      return this.drawBorder();
+    };
+
+    Lem1802.prototype.redraw = function() {
+      var i, x, y, _ref, _results;
+      _results = [];
+      for (x = 0, _ref = this.WIDTH; 0 <= _ref ? x <= _ref : x >= _ref; 0 <= _ref ? x++ : x--) {
+        _results.push((function() {
+          var _ref2, _results2;
+          _results2 = [];
+          for (y = 0, _ref2 = this.HEIGHT; 0 <= _ref2 ? y <= _ref2 : y >= _ref2; 0 <= _ref2 ? y++ : y--) {
+            i = y * this.WIDTH + x;
+            if (this.mScreen[i]) {
+              _results2.push(this.drawChar(x + 1, y + 1, this.mScreen[i]));
+            } else {
+              _results2.push(void 0);
+            }
+          }
+          return _results2;
+        }).call(this));
+      }
+      return _results;
     };
 
     Lem1802.prototype._screenCB = function() {
       var lem;
       lem = this;
       return function(a, v) {
-        var x, y;
-        x = a % 32;
-        y = Math.floor(a / 32);
-        return lem.drawChar(x, y, v);
+        lem.mScreen[a] = v;
+        return lem.redraw();
       };
     };
 
@@ -1092,7 +1289,8 @@ require.define("/hw/lem1802.coffee", function (require, module, exports, __dirna
       var lem;
       lem = this;
       return function(a, v) {
-        return;
+        lem.mFont[a] = v;
+        return lem.redraw();
       };
     };
 
@@ -1100,7 +1298,8 @@ require.define("/hw/lem1802.coffee", function (require, module, exports, __dirna
       var lem;
       lem = this;
       return function(a, v) {
-        return;
+        lem.mPalette[a] = v;
+        return lem.redraw();
       };
     };
 
@@ -1109,6 +1308,12 @@ require.define("/hw/lem1802.coffee", function (require, module, exports, __dirna
     Lem1802.prototype.FONT_RAM_SIZE = 256;
 
     Lem1802.prototype.PALETTE_RAM_SIZE = 16;
+
+    Lem1802.prototype.WIDTH = 32;
+
+    Lem1802.prototype.HEIGHT = 12;
+
+    Lem1802.prototype.BORDER_SIZE = 12;
 
     Lem1802.DFL_FONT = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0000, 0x0000, 0x00be, 0x0000, 0x0600, 0x0600, 0xfe24, 0xfe00, 0x48fe, 0x2400, 0xe410, 0x4e00, 0x2070, 0x2000, 0x0006, 0x0000, 0x3844, 0x8200, 0x8244, 0x3800, 0x1408, 0x1400, 0x2070, 0x2000, 0x80c0, 0x0000, 0x1010, 0x1000, 0x0080, 0x0000, 0xc038, 0x0600, 0xfe82, 0xfe00, 0x82fe, 0x8000, 0xf292, 0x9e00, 0x9292, 0xfe00, 0x1e10, 0xfe00, 0x9e92, 0xf200, 0xfe92, 0xf200, 0x0202, 0xfe00, 0xfe92, 0xfe00, 0x9e92, 0xfe00, 0x0088, 0x0000, 0x80c8, 0x0000, 0x2050, 0x8800, 0x2828, 0x2800, 0x8850, 0x2000, 0x04b2, 0x0c00, 0x70a8, 0x7000, 0xfc12, 0xfc00, 0xfe92, 0x6c00, 0x7c82, 0x4400, 0xfe82, 0x7c00, 0xfe92, 0x9200, 0xfe12, 0x1200, 0x7c82, 0xe400, 0xfe10, 0xfe00, 0x82fe, 0x8200, 0x4080, 0x7e00, 0xfe18, 0xe600, 0xfe80, 0x8000, 0xfe0c, 0xfe00, 0xfe3c, 0xfe00, 0x7c82, 0x7c00, 0xfe12, 0x0c00, 0x7c82, 0xfc00, 0xfe12, 0xec00, 0x4c92, 0x6400, 0x02fe, 0x0200, 0xfe80, 0xfe00, 0x7e80, 0x7e00, 0xfe60, 0xfe00, 0xee10, 0xee00, 0x0ef0, 0x0e00, 0xe292, 0x8e00, 0x00fe, 0x8200, 0x0638, 0xc000, 0x0082, 0xfe00, 0x0402, 0x0400, 0x8080, 0x8080, 0x0002, 0x0400, 0x48a8, 0xf800, 0xfc90, 0x6000, 0x7088, 0x5000, 0x6090, 0xfc00, 0x70a8, 0xb000, 0x20fc, 0x2400, 0xb8a8, 0xf800, 0xfc20, 0xe000, 0x90f4, 0x8000, 0xc090, 0xf400, 0xfc20, 0xd800, 0x04fc, 0x8000, 0xf830, 0xf800, 0xf808, 0xf800, 0x7088, 0x7000, 0xf828, 0x3800, 0x3828, 0xf800, 0xf808, 0x1800, 0xb8a8, 0xe800, 0x10fc, 0x9000, 0xf880, 0xf800, 0x7880, 0x7800, 0xf860, 0xf800, 0xd820, 0xd800, 0x98a0, 0x7800, 0xc8a8, 0x9800, 0x10ee, 0x8200, 0x00fe, 0x0000, 0x82ee, 0x1000, 0x1008, 0x1008, 0x0, 0x0];
 
@@ -1387,7 +1592,7 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
       this.mText = "";
       this.mName = name;
       id = name.split(".").join("_");
-      $('#projFiles').append("<li><a href='#'><i class='icon-file'></i>" + name + "</a></li>");
+      $('#projFiles').append("<li><a href='#'><i class='icon-file file-close'></i>" + name + "</a></li>");
       link = $("<a href='#openFile-" + id + "' data-toggle='tab'>" + name + "<i class='icon-remove'></i></a>");
       node = $("<li></li>").append(link);
       $('#openFiles').append(node);
@@ -1402,9 +1607,21 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
       this.mEditor = CodeMirror.fromTextArea(editor, {
         lineNumbers: true,
         mode: "text/x-csrc",
-        keyMap: "vim"
+        keyMap: "vim",
+        onGutterClick: function(cm, n, e) {
+          var info;
+          info = cm.lineInfo(n);
+          if (info.markerText) {
+            return cm.clearMarker(n);
+          } else {
+            return cm.setMarker(n, "<span style='color: #900'>●</span> %N%");
+          }
+        }
       });
       $("a[href=#openFile-" + id).tab("show");
+      $(".file-close").click(function() {
+        return alert("oh hey");
+      });
       link.click();
       this.mEditor.refresh();
     }
@@ -1415,6 +1632,14 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
       } else {
         return this.mEditor.getValue();
       }
+    };
+
+    File.prototype.name = function() {
+      return this.mName;
+    };
+
+    File.prototype.editor = function() {
+      return this.mEditor;
     };
 
     return File;
@@ -1441,9 +1666,11 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
       file = new File("entry.s");
       file.text(demoProgram);
       this.mFiles.push(file);
+      this.mFiles["entry.s"] = file;
       file = new File("msg.s");
       file.text(demoProgramMsg);
       this.mFiles.push(file);
+      this.mFiles["msg.s"] = file;
       this.mCreateDialog = $("#newFile").modal({
         show: false
       });
@@ -1498,9 +1725,10 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         file = _ref[_i];
         this.mAsm = new asm.Assembler();
-        jobs.push(this.mAsm.assemble(file.text()));
+        jobs.push(this.mAsm.assemble(file.text(), file.name()));
       }
       exe = asm.JobLinker.link(jobs);
+      console.log(exe);
       this.mCpu.loadJOB(exe);
       this.mCpu.regPC(0);
       this.dumpMemory();
@@ -1522,12 +1750,11 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
         var target;
         app.mLoopCount++;
         target = app.mLoopCount * (100000 / 20);
-        while (app.mCpu.cycles() < target) {
+        while (app.mCpu.mCycles < target) {
           app.mCpu.step();
         }
         app.updateRegs();
-        app.updateCycles();
-        if (app.mLoopCount >= 20) return app.mLoopCount = 0;
+        return app.updateCycles();
       };
       if (this.mRunTimer) clearInterval(this.timer);
       this.mRunTimer = setInterval(cb, 50);
@@ -1545,8 +1772,21 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
     };
 
     DcpuWebapp.prototype.step = function() {
+      var editor, i, info;
       this.mCpu.step();
-      return this.updateRegs();
+      this.updateRegs();
+      this.updateCycles();
+      i = this.mCpu.next();
+      info = this.mCpu.addr2line(i.addr());
+      editor = this.mFiles[info.file].editor();
+      if (this.mActiveLine != null) {
+        this.mFiles[this.mActiveLine.file].editor().setLineClass(this.mActiveLine.line, null, null);
+      }
+      editor.setLineClass(info.line, null, "activeline");
+      return this.mActiveLine = {
+        file: info.file,
+        line: info.line
+      };
     };
 
     DcpuWebapp.prototype.reset = function() {
@@ -1557,7 +1797,10 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
     };
 
     DcpuWebapp.prototype.create = function(f) {
-      this.mFiles.push(new File(f));
+      var file;
+      file = new File(f);
+      this.mFiles.push(file);
+      this.mFiles[f] = file;
       return this.mCreateDialog.modal("toggle");
     };
 
@@ -1616,8 +1859,15 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
         set a, 0\n\
         set b, 60\n\
         hwi 1\n\
+\n\
+        set a, 2\n\
+        set b, 2\n\
+        hwi 1\n\
+\n\
+        ias isr\n\
+\n\
         set a, 1\n\
-:loop hwi 1\n\
+:loop   hwi 1\n\
         set pc, loop\n\
 \n\
 :print  set b, 0\n\
@@ -1630,7 +1880,10 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
         add a, 1\n\
         add b, 1\n\
         set pc, print_loop\n\
-:crash  set pc, crash\n';
+:crash  set pc, crash\n\
+\n\
+:isr    set a, pop\n\
+        set pc, pop\n';
 
   demoProgramMsg = '\
 :ohhey  dat "So the linker works (kinda).", 0\
