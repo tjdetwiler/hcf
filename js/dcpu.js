@@ -54,6 +54,7 @@
       this.mBreakpoints = [];
       this.mDevices = [];
       this.mRunTimer = null;
+      this.mRunning = false;
       this.mSourceMap = [];
       this.reset();
     }
@@ -92,6 +93,10 @@
 
     Dcpu16.prototype.onCondFail = function(fn) {
       return this.mCondFail = fn;
+    };
+
+    Dcpu16.prototype.onPeriodic = function(fn) {
+      return this.mPeriodic = fn;
     };
 
     Dcpu16.prototype.reg = function(n, v) {
@@ -270,20 +275,26 @@
       var cb, cpu;
       cpu = this;
       cb = function() {
-        var i, _i, _results;
-        _results = [];
+        var i, _i;
         for (i = _i = 0; _i <= 10345; i = ++_i) {
-          _results.push(cpu.step());
+          if (!cpu.mRunning) {
+            break;
+          }
+          cpu.step();
         }
-        return _results;
+        if (cpu.mPeriodic != null) {
+          return cpu.mPeriodic(cpu);
+        }
       };
       if (this.mRunTimer) {
         clearInterval(this.timer);
       }
+      this.mRunning = true;
       return this.mRunTimer = setInterval(cb, 50);
     };
 
     Dcpu16.prototype.stop = function() {
+      this.mRunning = false;
       if (this.mRunTimer) {
         clearInterval(this.mRunTimer);
         return this.mRunTimer = null;
@@ -291,16 +302,15 @@
     };
 
     Dcpu16.prototype.step = function() {
-      var f, i, taken;
+      var f, i;
       i = this.mDecoded;
       if (f = this.mBreakpoints[i.addr()]) {
         this.stop();
         return f(i.addr(), "x");
       }
       if (this.mPendingIrq) {
-        taken = this.doInterrupt(this.mPendingIrq);
-        this.mPendingIrq = null;
-        if (taken) {
+        if (this.doInterrupt(this.mPendingIrq)) {
+          this.mPendingIrq = null;
           i = new Instr(this.mIStream);
         }
       }
@@ -349,7 +359,7 @@
     Dcpu16.prototype.doInterrupt = function(n) {
       var ia;
       ia = this.regIA();
-      if (ia === 0) {
+      if (ia === 0 || !this.mRunning) {
         return false;
       }
       this.push(this.mDecoded.addr());

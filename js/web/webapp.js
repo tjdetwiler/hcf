@@ -97,8 +97,8 @@
       this.mLoopCount = 0;
       this.mRegs = [$("#RegA"), $("#RegB"), $("#RegC"), $("#RegX"), $("#RegY"), $("#RegZ"), $("#RegI"), $("#RegJ"), $("#RegPC"), $("#RegSP"), $("#RegEX")];
       this.mCpu = new dcpu.Dcpu16();
-      this.setupCallbacks();
       this.setupCPU();
+      this.setupCallbacks();
       this.updateCycles();
       this.updateRegs();
       this.dumpMemory();
@@ -185,33 +185,15 @@
     };
 
     DcpuWebapp.prototype.run = function() {
-      var app, cb;
-      app = this;
-      cb = function() {
-        var target;
-        app.mLoopCount++;
-        target = app.mLoopCount * (100000 / 20);
-        while (app.mCpu.mCycles < target) {
-          app.mCpu.step();
-        }
-        app.updateRegs();
-        return app.updateCycles();
-      };
-      if (this.mRunTimer) {
-        clearInterval(this.timer);
-      }
-      this.mRunTimer = setInterval(cb, 50);
-      $("#btnRun").html("<i class='icon-stop'></i>Stop");
-      return this.mRunning = true;
+      this.mRunning = true;
+      this.mCpu.run();
+      return $("#btnRun").html("<i class='icon-stop'></i>Stop");
     };
 
     DcpuWebapp.prototype.stop = function() {
-      if (this.mRunTimer) {
-        clearInterval(this.mRunTimer);
-        this.mRunTimer = null;
-      }
-      $("#btnRun").html("<i class='icon-play'></i>Run");
-      return this.mRunning = false;
+      this.mCpu.stop();
+      this.mRunning = false;
+      return $("#btnRun").html("<i class='icon-play'></i>Run");
     };
 
     DcpuWebapp.prototype.step = function() {
@@ -248,12 +230,17 @@
     };
 
     DcpuWebapp.prototype.setupCPU = function() {
-      var lem;
+      var app, lem;
+      app = this;
       lem = new Lem1802(this.mCpu, $("#framebuffer")[0]);
       lem.mScale = 4;
       this.mCpu.addDevice(lem);
       this.mCpu.addDevice(new GenericClock(this.mCpu));
-      return this.mCpu.addDevice(new GenericKeyboard(this.mCpu));
+      this.mCpu.addDevice(new GenericKeyboard(this.mCpu));
+      return this.mCpu.onPeriodic(function(_) {
+        app.updateRegs();
+        return app.updateCycles();
+      });
     };
 
     DcpuWebapp.prototype.setupCallbacks = function() {

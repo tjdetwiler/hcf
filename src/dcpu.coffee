@@ -47,6 +47,7 @@ class Dcpu16
     @mBreakpoints = []
     @mDevices = []
     @mRunTimer = null
+    @mRunning = false
     @mSourceMap = []
     @reset()
 
@@ -68,13 +69,15 @@ class Dcpu16
   #
   # Event setter functions.
   #
-  # onPreExec:  fn(instr), where instr is the Instruction about to be executed.
-  # onPostExec: fn(instr), where instr is the Instruction just executed.
-  # onCondFail: fn(instr), where instr is the skipped Instruction.
+  # onPreExec:  fn(cpu, instr), where instr is the Instruction about to be executed.
+  # onPostExec: fn(cpu, instr), where instr is the Instruction just executed.
+  # onCondFail: fn(cpu, instr), where instr is the skipped Instruction.
+  # onPeriodic: fn(cpu)
   #
   onPreExec: (fn) -> @mPreExec = fn
   onPostExec: (fn) -> @mPostExec = fn
   onCondFail: (fn) -> @mCondFail = fn
+  onPeriodic: (fn) -> @mPeriodic = fn
 
   #
   # Register Accessors
@@ -191,14 +194,18 @@ class Dcpu16
     cpu = this
     cb = () ->
       for i in [0..10345]
+        if not cpu.mRunning then break
         cpu.step()
+      if cpu.mPeriodic? then cpu.mPeriodic cpu
     if @mRunTimer then clearInterval @timer
+    @mRunning = true
     @mRunTimer = setInterval cb, 50
 
   #
   # Stops continuous execution caused by a call to run()
   #
   stop: () ->
+    @mRunning = false
     if @mRunTimer
       clearInterval @mRunTimer
       @mRunTimer = null
@@ -223,12 +230,12 @@ class Dcpu16
     # Take an IRQ if pending and we're running (no irqs in single-step mode)
     #
     if @mPendingIrq
-      taken = @doInterrupt @mPendingIrq
-      @mPendingIrq = null
       #
       # If we've vectored to IA, fetch the correct instruction
       #
-      if taken then i = new Instr @mIStream
+      if @doInterrupt @mPendingIrq
+        @mPendingIrq = null
+        i = new Instr @mIStream
 
     #
     # Execute and fire events
@@ -278,19 +285,24 @@ class Dcpu16
       return console.log "Unable to execute OPC #{opc}"
     this[f] valA, valB
 
+  #
+  # Signals the CPU to take an interrupt
+  #
   interrupt: (n) ->
     @mPendingIrq = n
 
+  #
+  # Updates CPU state based on signalled interrupt
+  #
   doInterrupt: (n) ->
     ia = @regIA()
 
-    # Check IA
-    if ia == 0
+    # Don't take interrupt if we're single-stepping or we have no IA
+    if ia == 0 or not @mRunning
       return false
 
     # TODO: Check if interrupt queueing enabled
     # TODO: Put interrupt in queue
-
     @push @mDecoded.addr()
     @push @regA()
     @regPC ia

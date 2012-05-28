@@ -91,8 +91,8 @@ class DcpuWebapp
       ($ "#RegSP"),
       ($ "#RegEX")]
     @mCpu = new dcpu.Dcpu16()
-    @setupCallbacks()
     @setupCPU()
+    @setupCallbacks()
     @updateCycles()
     @updateRegs()
     @dumpMemory()
@@ -169,31 +169,15 @@ class DcpuWebapp
     else
       @run()
 
-  #
-  # Run the CPU at approximately 100KHz
-  #
   run: () ->
-    app = this
-    cb = () ->
-      app.mLoopCount++
-      # FIXME: Parameterize these values (freq and step)
-      target = app.mLoopCount * (100000/20)
-      while app.mCpu.mCycles < target
-        app.mCpu.step()
-      app.updateRegs()
-      app.updateCycles()
-
-    if @mRunTimer then clearInterval @timer
-    @mRunTimer = setInterval cb, 50
-    $("#btnRun").html "<i class='icon-stop'></i>Stop"
     @mRunning = true
+    @mCpu.run()
+    $("#btnRun").html "<i class='icon-stop'></i>Stop"
 
   stop: () ->
-    if @mRunTimer
-      clearInterval @mRunTimer
-      @mRunTimer = null
-    $("#btnRun").html "<i class='icon-play'></i>Run"
+    @mCpu.stop()
     @mRunning = false
+    $("#btnRun").html "<i class='icon-play'></i>Run"
 
   step: () ->
     @mCpu.step()
@@ -227,11 +211,15 @@ class DcpuWebapp
   #
   setupCPU: () ->
     # Setup Devices
+    app = @
     lem = new Lem1802 @mCpu, $("#framebuffer")[0]
     lem.mScale = 4
     @mCpu.addDevice lem
     @mCpu.addDevice new GenericClock @mCpu
     @mCpu.addDevice new GenericKeyboard @mCpu
+    @mCpu.onPeriodic (_) ->
+      app.updateRegs()
+      app.updateCycles()
 
   #
   # Wire up DOM event callbacks.
