@@ -1,6 +1,7 @@
 CodeMirror.defineMode("dasm", function(config, parserConfig) {
   var indentUnit = config.indentUnit,
       keywords = parserConfig.keywords || {},
+      registers = parserConfig.registers || {},
       hooks = parserConfig.hooks || {},
       multiLineStrings = parserConfig.multiLineStrings;
   var isOperatorChar = /[+\-*&%=<>!?|\/]/;
@@ -13,7 +14,6 @@ CodeMirror.defineMode("dasm", function(config, parserConfig) {
     if (stream.sol() && ch == ":") {
       ch = stream.next();
       stream.eatWhile(/[\S\.]/);
-      atoms.push(stream.current().substr(1));
       return "label";
     }
     else 
@@ -27,16 +27,21 @@ CodeMirror.defineMode("dasm", function(config, parserConfig) {
       state.tokenize = tokenString(ch);
       return state.tokenize(stream, state);
     }
+    if (ch == '[' || ch == ']' || ch == '+') {
+      stream.eat(/\[\]+/);
+      return "operator";
+    }
     if (/\d/.test(ch)) {
       stream.eatWhile(/[\w\.]/);
       return "number";
     }
     stream.eatWhile(/[\w\$_]/);
     var cur = stream.current();
-    if (keywords.propertyIsEnumerable(cur)) {
+    if (keywords.propertyIsEnumerable(cur.toLowerCase())) {
       return "keyword";
-    }
-    else if (atoms.indexOf(cur) > -1) {
+    } else if (registers.propertyIsEnumerable(cur.toLowerCase())) {
+      return "variable";
+    } else {
       return "label";
     }
   }
@@ -113,7 +118,8 @@ CodeMirror.defineMode("dasm", function(config, parserConfig) {
     for (var i = 0; i < words.length; ++i) obj[words[i]] = true;
     return obj;
   }
-  var cKeywords = "set add sub mul mli div dvi mod mdi and bor xor shr asr shl ifb ifc ife ifn ifg ifa ifl ifu adx sbx sti std jsr int iag ias rfi iaq hwn hwq hwi dat";
+  var keywordlist = "set add sub mul mli div dvi mod mdi and bor xor shr asr shl ifb ifc ife ifn ifg ifa ifl ifu adx sbx sti std jsr int iag ias rfi iaq hwn hwq hwi dat";
+  var registerlist = "a b c x y z i j pc sp ex";
 
   function cppHook(stream, state) {
     if (!state.startOfLine) return false;
@@ -135,7 +141,8 @@ CodeMirror.defineMode("dasm", function(config, parserConfig) {
 
   CodeMirror.defineMIME("text/x-dasm", {
     name: "dasm",
-    keywords: words(cKeywords),
+    keywords: words(keywordlist),
+    registers: words(registerlist),
     hooks: {"#": cppHook}
   });
 }());
