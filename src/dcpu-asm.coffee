@@ -166,6 +166,7 @@ class JobLinker
         code[i] = {val: addr, file: v.file, line: v.line}
       else if isNaN v.val
         console.log "Error: Undefined Symbol '#{v}'"
+        console.log v
 
     return r =
       format: "job"
@@ -185,9 +186,9 @@ class Assembler
   @ilit_regex = ///^\[\s*(0[xX][0-9a-fA-F]+|\d+)\s*\]///
   @arr_regex = ///^\[\s*([0-9a-zA-Z]+)\s*\+\s*([0-9a-zA-Z]+)\s*\]///
   @str_regex = ///"([^"]*)"///
-  @basic_regex = ///(\w+)\s+([^,]+)\s*,\s*([^,]+)///
-  @adv_regex = ///(\w+)\s+([^,]+)///
-  @dir_regex = ///(\.[a-zA-Z0-9]+)(.*)///
+  @basic_regex = ///^(\w+)\s+([^,]+)\s*,\s*([^,]+)///
+  @adv_regex = ///^(\w+)\s+([^,]+)///
+  @dir_regex = ///^(\.[a-zA-Z0-9]+)(.*)///
 
   #
   # Line Parsers.
@@ -198,7 +199,7 @@ class Assembler
   @LINE_PARSERS = [
     @LP_EMPTY =   {match: /^$/,             f: 'lpEmpty'},
     @LP_DIRECT =  {match: @dir_regex,       f: 'lpDirect'},
-    @LP_DAT =     {match: /^[dD][aA][tT].*/,f: 'lpDat'},
+    @LP_DAT =     {match: /^[dD][aA][tT](.*)/,f: 'lpDat'},
     @LP_COMMENT = {match: /^;.*/,           f: 'lpComment'},
     @LP_LABEL =   {match: /^:.*/,           f: 'lpLabel'},
     @LP_ISIMP =   {match: @basic_regex,     f: 'lpIBasic'},
@@ -315,7 +316,7 @@ class Assembler
   #
   # Matches an empty line (no action)
   #
-  lpEmpty:  (match) ->
+  lpEmpty:  (match) -> undefined
 
   #
   # Matches a directive ('.<directive>')
@@ -323,6 +324,7 @@ class Assembler
   lpDirect: (match) ->
     name = match[1].toUpperCase()
     console.log "Directive '#{name}'"
+    undefined.crash()
     for d in Assembler.DIRECTS
       if name == d.id.toUpperCase()
         return this[d.f] match
@@ -330,15 +332,16 @@ class Assembler
   #
   # Matches a comment line
   #
-  lpComment:(match) ->
+  lpComment:(match) -> undefined
 
   #
   # Matches the 'DAT' pseudo-op
   #
   lpDat:    (match) ->
-    toks = match[0].match(/[^ \t]+/g)[1..].join(" ").split(",")
+    toks = match[1].split(",")
     for tok in toks
       tok = tok.trim()
+      console.log "Using tok #{tok}"
       if tok[0] is ";" then break
       if match = tok.match Assembler.str_regex
         for c in match[1]
@@ -347,6 +350,7 @@ class Assembler
         @out(new Data @, n)
       else
         console.log "Bad Data String: '#{tok}'"
+      if tok.indexOf(';') != -1 then break
 
 
   #
@@ -403,6 +407,7 @@ class Assembler
   #   Label references
   #
   vpWord:  (match) ->
+    console.log "word: #{match}"
     switch match[1].toUpperCase()
       when "POP"    then new RawValue @, Value.VAL_POP
       when "PUSH"   then new RawValue @, Value.VAL_PUSH

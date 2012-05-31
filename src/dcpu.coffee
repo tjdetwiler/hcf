@@ -399,7 +399,7 @@ class Dcpu16
     v = a.get(@) - b.get(@)
     if v < 0
       @regEX 0xffff
-      v += 0xffff
+      v += 0x10000
     else
       @regEX 0
     a.set @,v
