@@ -1,0 +1,22 @@
+{
+  "author": "Tim Detwiler <timdetwiler@gmail.com>",
+  "name": "hcf",
+  "description": "Dcpu16 Assembler/Disassembler/Emulator Library in CoffeeScript",
+  "version": "0.0.0",
+  "homepage": "hcf.io",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tjdetwiler/dcpu-coffee.git"
+  },
+  "main": "lib/index",
+  "engines": {
+    "node": "~0.6.6"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "prepublish": "coffee -o lib -c src/*.coffee; coffee -o lib/hw -c src/hw/*.coffee; coffee -o lib/node -c src/node/*.coffee; coffee -o lib/web -c src/web/*.coffee"
+  },
+  "bin": { "hcf": "./bin/hcf" },
+  "license": "GPL"
+}
