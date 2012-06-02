@@ -1,22 +1,71 @@
 hcf
 ===
 
-Dcpu16 library written in CoffeeScript.
+Dcpu16 library written in CoffeeScript. The hcf library provides an emulator,
+assembler, and disassembler compliant with v1.7 of the DCPU spec. Whils implemented
+as a series of node.js modules, hcf can be used in the browser thanks to broswerify.
+The only limitation currently is the Lem1802 display device requires an HTML5 canvas
+element.
 
 # Installing
-  npm install hcf
-  
-# Classes
-hcf exports a variety of classes to facilitate emulating, assembling, and linking dcpu16 code.
+    npm install hcf
 
-## hcf.Dcpu16
-## hcf.Hw.Device
-Device interface. See src/hw/README.md for more information on the device interface.
-## hcf.Hw.Lem1802
-## hcf.Hw.GenericClock
-## hcf.Hw.GenericKeyboard
-## hcf.Assembler
-## hcf.JobLinker
-## hcf.Disasm
-## hcf.Instr
-## hcf.Value
+# Basic Usage (Emulator)
+
+    hcf = require('hcf');
+  
+    prog = [];
+    dcpu = new hcf.Dcpu16();
+    dcpu.loadBinary(prog);
+    dcpu.run();
+
+The above code would execute a DCPU binary, however it wouldn't be very
+interesting. The Dcpu16.run method will run the CPU at approximately 100KHz.
+You can hook into execution events by providing callback methods:
+
+    // onPreExec - Called right before executing Instr 'i'
+    dcpu.onPreExec(function(cpu, i) {});
+    // onPostExec - Called right after exectuing Instr 'i'
+    dcpu.onPostExec(function(cpu, i) {});
+    // onPeriondic - Called every 10,000 instructions or so.
+    dcpu.onPeriodic(function(cpu) {});
+    // onCondFail - Called when an instruction is skipped via conditional execution
+    dcpu.onCondFail(function(cpu, i) {});
+
+Standard hardware devices are provided as well:
+
+    // LEM requires an HTML5 canvas element
+    canvs = $("#myCanvas");
+    dcpu.addDevice(new hcf.Hw.Lem1802(dcpu, canvas));
+    dcpu.addDevice(new hcf.Hw.GenericClock(dcpu));
+    dcpu.addDevice(new hcf.Hw.GenericKeyboard(dcpu));
+
+Register/Memory accessors:
+
+    // Read registers
+    a = dpcu.regA();
+    b = dcpu.regB();
+    c = dcpu.regC();
+  
+    // Write Registers
+    dcpu.regX(0xdead);
+    dcpu.regY(dcpu.regA());
+    dcpu.regZ(0);
+    
+    // Special registers too
+    pc = dpcu.regPC();
+    sp = dcpu.regSP();
+    ex = dcpu.regEX();
+    ia = dcpu.regIA();
+    
+    // Memory
+    addr = 0x1234;
+    word = dcpu.readMem(addr);
+    dcpu.writeMem(addr, 0xbeef);
+    
+Breakpoints for read/write/execute events:
+
+    // Sets a breakpoint
+    // addr - memory address
+    // mode - "r", "w", "x", or any combination of them.
+    dcpu.breakpoint(0x1000, "rwx", function(cpu, addr, mode) { });
