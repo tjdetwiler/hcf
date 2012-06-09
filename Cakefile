@@ -47,6 +47,7 @@ task 'clean', 'cleans up the workspace', (options) ->
   run "rm -rf lib/"
   run "rm -f  hcf.js"
   run "rm -f  hcf.min.js"
+  run "rm -f  index.js"
 
 process.on "exit", () ->
   if anyError
