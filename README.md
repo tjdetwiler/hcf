@@ -2,14 +2,16 @@ hcf
 ===
 
 Dcpu16 library written in CoffeeScript. The hcf library provides an emulator,
-assembler, and disassembler compliant with v1.7 of the DCPU spec. Whils implemented
-as a series of node.js modules, hcf can be used in the browser thanks to broswerify.
-The only limitation currently is the Lem1802 display device requires an HTML5 canvas
-element.
+assembler, and disassembler compliant with v1.7 of the DCPU spec.
 
-# Installing
+# Installing - npm (Javascript/Production)
     npm install hcf
 
+# Installing - git (Coffeescript/Development)
+    git clone git://github.com/tjdetwiler/hcf.git hcf
+    cd hcf
+    cake all
+    
 # Basic Usage (Emulator)
 
     hcf = require('hcf');
@@ -19,8 +21,7 @@ element.
     dcpu.loadBinary(prog);
     dcpu.run();
 
-The above code would execute a DCPU binary, however it wouldn't be very
-interesting. The Dcpu16.run method will run the CPU at approximately 100KHz.
+The above code would execute a DCPU binary at approximately 100KHz.
 You can hook into execution events by providing callback methods:
 
     // onPreExec - Called right before executing Instr 'i'
