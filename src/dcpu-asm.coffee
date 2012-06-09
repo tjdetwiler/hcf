@@ -155,8 +155,9 @@ class JobLinker
     # Merge sections and symbols
     #
     for job in jobs
-      @mergeSyms(syms, job.sections[0].sym, code.length)
-      code = code.concat job.sections[0].data
+      if job.sections[0]?
+        @mergeSyms(syms, job.sections[0].sym, code.length)
+        code = code.concat job.sections[0].data
 
     #
     # Resolve
