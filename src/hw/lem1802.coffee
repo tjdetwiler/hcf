@@ -84,7 +84,8 @@ class Lem1802 extends Device
       @mUserPalette = (0 for _ in [0..@PALETTE_RAM_SIZE])
     @mPaletteAddr = base
 
-  setBorderColor:   () -> @drawBorder @mBorderColor = @mCpu.regB() & 0xf
+  setBorderColor:   () ->
+    @drawBorder @mBorderColor = @mCpu.regB() & 0xf
 
   readFontRam:    (i) ->
     if @mFont?
@@ -153,8 +154,8 @@ class Lem1802 extends Device
   # Redraws the entire screen.
   #
   redraw: () ->
-    for x in [0..@WIDTH]
-      for y in [0..@HEIGHT]
+    for x in [0..@WIDTH-1]
+      for y in [0..@HEIGHT-1]
         i = y * @WIDTH+x
         if @mScreen[i] then @drawChar x+1, y+1, @mScreen[i]
 
