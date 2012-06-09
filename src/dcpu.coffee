@@ -81,10 +81,11 @@ class Dcpu16
   # onCondFail: fn(cpu, instr), where instr is the skipped Instruction.
   # onPeriodic: fn(cpu), fired several times a second
   #
-  onPreExec: (fn) -> @mPreExec = fn
-  onPostExec: (fn) -> @mPostExec = fn
-  onCondFail: (fn) -> @mCondFail = fn
-  onPeriodic: (fn) -> @mPeriodic = fn
+  onPreExec:   (fn) -> @mPreExecCb = fn
+  onPostExec:  (fn) -> @mPostExecCb = fn
+  onCondFail:  (fn) -> @mCondFailCb = fn
+  onPeriodic:  (fn) -> @mPeriodic = fn
+  onInstrUndefined: (fn) -> @mInstrUndefinedCb = fn
 
   #
   # Register Accessors
@@ -235,6 +236,13 @@ class Dcpu16
       return f(i.addr(), "x")
 
     #
+    # Verify we have a valid instruction.
+    #
+    if !i.valid()
+      if @mInstrUndefinedCb? then @mInstrUndefinedCb @, i
+      return
+
+    #
     # Take an IRQ if pending and we're running (no irqs in single-step mode)
     #
     if @mPendingIrq
@@ -248,9 +256,9 @@ class Dcpu16
     #
     # Execute and fire events
     #
-    if @mPreExec? then @mPreExec i
+    if @mPreExecCb? then @mPreExecCb @, i
     @exec i
-    if @mPostExec? then @mPostExec i
+    if @mPostExecCb? then @mPostExecCb @, i
 
     #
     # If we've failed a conditional instruction, we should keep skipping
@@ -259,7 +267,7 @@ class Dcpu16
     while @mCCFail
       i = new Instr @mIStream
       @mCCFail = i.cond()
-      if @mCondFail? then @mCondFail i
+      if @mCondFailCb? then @mCondFailCb @, i
 
     @mDecoded = new Instr @mIStream
 
