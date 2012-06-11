@@ -2,7 +2,7 @@
   "author":     "Tim Detwiler <timdetwiler@gmail.com>",
   "name":       "hcf",
   "description":"Dcpu16 Assembler/Disassembler/Emulator Library in CoffeeScript",
-  "version":    "0.0.1",
+  "version":    "0.0.2",
   "homepage":   "hcf.io",
   "repository": {
     "type":     "git",
