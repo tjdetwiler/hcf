@@ -1,4 +1,4 @@
-; Addition test
+; Subtraction test
 
 ; Some real basic stuff
 set a, 1

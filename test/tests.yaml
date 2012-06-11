@@ -1,3 +1,18 @@
 instruction_tests:
   - add.s
   - sub.s
+  - mul.s
+  - mli.s
+  - div.s
+  - dvi.s
+  - mod.s
+  - and.s
+  - bor.s
+  - xor.s
+  - shr.s
+  - asr.s
+  - shl.s
+  - sti.s
+  - if.s
+  - adx.s
+  - sbx.s

@@ -232,6 +232,9 @@ class Dcpu16
         return "fail"
       return "continue"
     pass = () -> "pass"
+    fail = (msg) ->
+      process.stderr.write "#{msg}\n"
+      return "fail"
     cpu = @
     result = eval expr
     if result == "pass"
