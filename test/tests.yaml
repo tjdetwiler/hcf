@@ -1,0 +1,3 @@
+instruction_tests:
+  - add.s
+  - sub.s

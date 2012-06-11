@@ -62,7 +62,7 @@ class Dcpu16Shell extends cmd.Cmd
         console.log "Error loading binary"
   help_load: () -> "Loads a binary into memory."
 
-  do_asm: (toks) ->
+  do_asm: (toks, done) ->
     fn = toks[0]
     asm = @asm
     cpu = @dcpu
@@ -77,6 +77,7 @@ class Dcpu16Shell extends cmd.Cmd
           cpu.loadJOB prog
       else
         return console.log "Error assembling file"
+      done()
   
   #
   # Disassemble
@@ -151,8 +152,26 @@ class Dcpu16Shell extends cmd.Cmd
   do_shell: undefined
   help_shell: undefined
 
-process.on "SIGINT", ()-> console.log "Oh Hey."
-
+source_file = undefined
+debug_mode = true
 shell = new Dcpu16Shell()
-shell.cmdloop()
+init_break = false
+interactive = false
+
+for k,i in process.argv
+  if k == "-f"
+    source_file = process.argv[i+1]
+  if k == "-b"
+    init_break = true
+  if k == "-i"
+    interactive = true
+
+if source_file?
+  console.log "Running '#{source_file}'"
+  shell.do_asm [source_file], () ->
+    if not init_break
+      shell.do_run()
+
+if interactive
+  shell.cmdloop()
 

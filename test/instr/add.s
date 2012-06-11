@@ -4,8 +4,8 @@
 set a, 1
 set b, 2
 add a, b
-;! assert(cpu.regA() == 1);
-;! assert(cpu.regB() == 3);
+;! assert(cpu.regA() == 3);
+;! assert(cpu.regB() == 2);
 
 ; Overflow test
 set a, 0xffff

@@ -228,7 +228,7 @@ class Dcpu16
   debugCheck: (expr) ->
     assert = (e) ->
       if not e
-        console.log "Assert Failed: '#{expr}'"
+        process.stderr.write "Assert Failed: '#{expr}'"
         return "fail"
       return "continue"
     pass = () -> "pass"
