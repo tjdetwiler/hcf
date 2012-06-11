@@ -56,6 +56,7 @@ class Dcpu16
     @mRunTimer = null
     @mRunning = false
     @mSourceMap = []
+    @mDebugMap = undefined
     @reset()
 
   #
@@ -188,7 +189,8 @@ class Dcpu16
       if not @mSourceMap[x.file]?
         @mSourceMap[x.file] = []
       @mSourceMap[x.file][x.line] = i
-
+    if job.sections[0].debug?
+      @mDebugMap = job.sections[0].debug
     @loadBinary bin
 
   #
@@ -222,6 +224,24 @@ class Dcpu16
     if @mRunTimer
       clearInterval @mRunTimer
       @mRunTimer = null
+
+  debugCheck: (expr) ->
+    assert = (e) ->
+      if not e
+        console.log "Assert Failed: '#{expr}'"
+        return "fail"
+      return "continue"
+    pass = () -> "pass"
+    cpu = @
+    result = eval expr
+    if result == "pass"
+      console.log "Exiting on Success"
+      process.exit 0
+    else if result == "fail"
+      console.log "Exiting on Failure"
+      process.exit 1
+
+
   #
   # Execute one instruction (high level). For actual execution logic, see exec.
   #
@@ -234,6 +254,12 @@ class Dcpu16
     if f = @mBreakpoints[i.addr()]
       @stop()
       return f(i.addr(), "x")
+
+    #
+    # Check for any simulator debug hooks.
+    #
+    if @mDebugMap? and exprs = @mDebugMap[i.addr()]
+      @debugCheck expr for expr in exprs
 
     #
     # Verify we have a valid instruction.
@@ -398,7 +424,7 @@ class Dcpu16
     v = a.get(@) + b.get(@)
     if v > 0xffff
       @regEX 1
-      v -= 0xffff
+      v -= 0x10000
     else
       @regEX 0
     a.set @,v

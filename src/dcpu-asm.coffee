@@ -147,8 +147,14 @@ class JobLinker
       else
         a[k] = v+o
 
+  @mergeDebug: (a, b, o) ->
+    for v,i in b
+      if not a[i+o]? then a[i+o] = []
+      a[i+o] = v
+
   @link: (jobs) ->
     code = []
+    debug = []
     syms = {}
 
     #
@@ -157,6 +163,7 @@ class JobLinker
     for job in jobs
       if job.sections[0]?
         @mergeSyms(syms, job.sections[0].sym, code.length)
+        @mergeDebug(debug, job.sections[0].debug, code.length)
         code = code.concat job.sections[0].data
 
     #
@@ -172,9 +179,9 @@ class JobLinker
     return r =
       format: "job"
       version: 0.1
-      source: "Tims Linker"
+      source: "hcf Linker"
       sections : [
-        {name: ".text", data: code, sym: syms}
+        {name: ".text", data: code, sym: syms, debug: debug}
       ]
 
 class Assembler
@@ -201,6 +208,7 @@ class Assembler
     @LP_EMPTY =   {match: /^$/,             f: 'lpEmpty'},
     @LP_DIRECT =  {match: @dir_regex,       f: 'lpDirect'},
     @LP_DAT =     {match: /^[dD][aA][tT](.*)/,f: 'lpDat'},
+    @LP_DEBUG =   {match: /^;\!(.*)/,       f: 'lpDebug'},
     @LP_COMMENT = {match: /^;.*/,           f: 'lpComment'},
     @LP_LABEL =   {match: /^:.*/,           f: 'lpLabel'},
     @LP_ISIMP =   {match: @basic_regex,     f: 'lpIBasic'},
@@ -242,6 +250,7 @@ class Assembler
       if op? then @mOpcDict[op.id.toUpperCase()] = op
     @mFile = "undefined"
     @mLine = 0
+    @mDebug = {}
 
   label: (name, addr) ->
     if not @mLabels[@mSect]?
@@ -296,12 +305,12 @@ class Assembler
     for s,i of @mInstrs
       prog = []
       @emit s, prog
-      sections.push {name: s, data: prog, sym: @mLabels[s]}
+      sections.push {name: s, data: prog, sym: @mLabels[s], debug: @mDebug[s]}
 
     return r =
       format: "job"
       version: 0.1
-      source: "Tims Assembler"
+      source: "hcf Assembler"
       sections: sections
 
   assembleAndLink: (text) ->
@@ -329,7 +338,7 @@ class Assembler
     for d in Assembler.DIRECTS
       if name == d.id.toUpperCase()
         return this[d.f] match
-
+  
   #
   # Matches a comment line
   #
@@ -352,6 +361,14 @@ class Assembler
       else
         console.log "Bad Data String: '#{tok}'"
       if tok.indexOf(';') != -1 then break
+
+  #
+  # Matches a debug line.
+  #
+  lpDebug:  (match) ->
+    if not @mDebug[@mSect]? then @mDebug[@mSect] = []
+    if not @mDebug[@mSect][@mPc]? then @mDebug[@mSect][@mPc] = []
+    @mDebug[@mSect][@mPc].push match[1]
 
 
   #
@@ -408,7 +425,6 @@ class Assembler
   #   Label references
   #
   vpWord:  (match) ->
-    console.log "word: #{match}"
     switch match[1].toUpperCase()
       when "POP"    then new RawValue @, Value.VAL_POP
       when "PUSH"   then new RawValue @, Value.VAL_PUSH

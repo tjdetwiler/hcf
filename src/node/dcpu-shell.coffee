@@ -37,10 +37,10 @@ class Dcpu16Shell extends cmd.Cmd
     @dcpu = new dcpu.Dcpu16()
     @dcpu.addDevice new lem1802.Lem1802 @dcpu
     @dcpu.addDevice new generic_clock.GenericClock @dcpu
-    @dcpu.onPreExec (i) ->
+    @dcpu.onPreExec (cpu, i) ->
       if inst.mTrace
         console.log dasm.Disasm.ppInstr i
-    @dcpu.onCondFail (i) ->
+    @dcpu.onCondFail (cpu, i) ->
       if inst.mTrace
         console.log "::SKIP: #{dasm.Disasm.ppInstr i}"
     @intro = 
@@ -74,7 +74,7 @@ class Dcpu16Shell extends cmd.Cmd
           fs.writeFile toks[1], txt, (err) ->
             if err then console.log "Error writing out binary"
         else
-          cpu.loadBinary prog.sections[0].data
+          cpu.loadJOB prog
       else
         return console.log "Error assembling file"
   
