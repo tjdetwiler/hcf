@@ -77,7 +77,7 @@ class Dcpu16Shell extends cmd.Cmd
           cpu.loadJOB prog
       else
         return console.log "Error assembling file"
-      done()
+      if done? then done()
   
   #
   # Disassemble

@@ -184,6 +184,8 @@ class Instr
     @OPC_IFA = {op: 0x15, id: "ifa", cost: 2, cond: true},
     @OPC_IFL = {op: 0x16, id: "ifl", cost: 2, cond: true},
     @OPC_IFU = {op: 0x17, id: "ifu", cost: 2, cond: true},
+    undefined,
+    undefined,
     @OPC_ADX = {op: 0x1a, id: "adx", cost: 3, cond: false},
     @OPC_SBX = {op: 0x1b, id: "sbx", cost: 3, cond: false},
     undefined,
@@ -218,7 +220,8 @@ class Instr
   constructor: (stream) ->
     @mIStream = stream
     @mAddr = @mIStream.getPC()
-    [@mOpc, @mValA, @mValB] = @decode @mIStream.nextWord()
+    @mEncoding = @mIStream.nextWord()
+    [@mOpc, @mValA, @mValB] = @decode @mEncoding
     @mParams = @_getParams()
 
   decode: (instr) ->
@@ -231,7 +234,6 @@ class Instr
     else
       valB = new Value @mIStream, valB
     valA = new Value @mIStream, valA
-
     [opcode, valB, valA]
 
   opc:    () -> @mOpc
@@ -241,6 +243,7 @@ class Instr
   cond:   () -> @mParams.cond
   cost:   () -> @mParams.cost
   valid:  () -> @mParams?
+  encoding: () -> @mEncoding
 
   _getParams: () ->
     if @mOpc

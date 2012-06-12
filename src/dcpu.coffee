@@ -112,6 +112,12 @@ class Dcpu16
   readReg:  (n)     -> @_reg n
   writeReg: (n,val) -> @_reg n, val
 
+  clamp: (val) ->
+    if val < 0x10000
+      val
+    else
+      val % 0x10000
+
   #
   # Memory Interface
   #
@@ -266,9 +272,11 @@ class Dcpu16
 
     #
     # Verify we have a valid instruction.
+    # If the instruction is invalid, we will fetch a new instruction if either
+    # our undefined callback is null, or the result of the callback is false
     #
-    if !i.valid()
-      if @mInstrUndefinedCb? then @mInstrUndefinedCb @, i
+    if !i.valid() and (!@mInstrUndefinedCb? or @mInstrUndefinedCb @, i)
+      @mDecoded = new Instr @mIStream
       return
 
     #
@@ -395,12 +403,12 @@ class Dcpu16
   # Generates a register access function
   #
   _regGen: (n) ->
-    cpu = this
-    (v) -> 
+    (v) => 
       if v?
-        cpu.mRegStorage[n]=v
+        # overflow check
+        @mRegStorage[n]=@clamp v
       else
-        cpu.mRegStorage[n]
+        @mRegStorage[n]
 
   #
   # Instruction Execution Logic
@@ -409,9 +417,6 @@ class Dcpu16
   # instruction SET PC, 0x1000 will be handled by 
   #
   # _exec_adv is a special case for basic opcode '0'.
-  #
-  # BUG: These are written in DCPU 1.1 form, so a and b are swapped.
-  #      Passed values are the order they appear in assembly.
   #
   _exec_adv: (a,b) ->
     opc =  a.raw()
@@ -427,7 +432,6 @@ class Dcpu16
     v = a.get(@) + b.get(@)
     if v > 0xffff
       @regEX 1
-      v -= 0x10000
     else
       @regEX 0
     a.set @,v
@@ -538,7 +542,7 @@ class Dcpu16
   _exec_asr: (a,b) -> undefined
 
   _exec_sti: (a,b) ->
-    b.set @, a.get @
+    a.set @, b.get @
     @regJ @regJ() + 1
     @regI @regI() + 1
 
