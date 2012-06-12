@@ -535,7 +535,7 @@ class Dcpu16
 
   _exec_ifu: (a,b) ->
     if (@signed a.get @) >= (@signed b.get @)
-      @mCCFaile=true
+      @mCCFail=true
 
   _exec_adx: (a,b) -> undefined
   _exec_sbx: (a,b) -> undefined
