@@ -77,9 +77,6 @@
         <div id="emulator" class="tab-pane active">
           <div class="row-fluid">
             <div class="span5">
-              <ul id="openFiles" class="nav nav-tabs">
-                <li><a href="#newFile" data-toggle="modal"><i class="icon-plus"></i></a></li>
-              </ul>
               <div id="openFileContents" class="tab-content">
               </div><!--tab-contents-->
             </div><!--span-->
@@ -212,26 +209,6 @@ $(function() {
 
 </script>
 <script src="javascripts/application.js"></script>
-
-  <div class="modal" id="newFile">
-    <div class="modal-header">
-      <button class="close" data-dismiss="modal">×</button>
-      <h3>Create File</h3>
-    </div>
-    <div class="modal-body">
-      <form>
-        Filname: <input id="inNewfn" type="text"></input>
-      </form>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" onClick="$('#newFile').modal('toggle')">
-        Close
-      </button>
-      <button class="btn btn-primary" onClick="app.create($('#inNewfn').val())">
-        Create
-      </button>
-    </div>
-  </div>
 
 </body>
 </html>

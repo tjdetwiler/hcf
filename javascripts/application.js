@@ -2748,14 +2748,6 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
       file.text(demoProgram);
       this.mFiles.push(file);
       this.mFiles["entry.s"] = file;
-      file = new File("msg.s");
-      file.text(demoProgramMsg);
-      this.mFiles.push(file);
-      this.mFiles["msg.s"] = file;
-      this.mCreateDialog = $("#newFile").modal({
-        show: false
-      });
-      this.mCreateDialog.hide();
       this.assemble();
     }
 
@@ -2966,10 +2958,9 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
 \n\
 :isr    add x, 1\n\
         set a, pop\n\
-        set pc, pop\n';
+        set pc, pop\n
+:ohhey  dat "Hello World!"\n';
 
-  demoProgramMsg = '\
-:ohhey  dat "So the linker works (kinda).", 0\
 ';
 
 }).call(this);
