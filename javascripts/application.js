@@ -2958,10 +2958,9 @@ require.define("/webapp.coffee", function (require, module, exports, __dirname, 
 \n\
 :isr    add x, 1\n\
         set a, pop\n\
-        set pc, pop\n
+        set pc, pop\n\
 :ohhey  dat "Hello World!"\n';
 
-';
 
 }).call(this);
 
