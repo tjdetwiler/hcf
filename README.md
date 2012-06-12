@@ -4,6 +4,8 @@ hcf
 Dcpu16 library written in CoffeeScript. The hcf library provides an emulator,
 assembler, and disassembler compliant with v1.7 of the DCPU spec.
 
+[Demo Time!](http://tjdetwiler.github.com/hcf/)
+
 # Installing - npm (Javascript/Production)
     npm install hcf
 
