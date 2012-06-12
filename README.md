@@ -10,7 +10,8 @@ assembler, and disassembler compliant with v1.7 of the DCPU spec.
 # Installing - git (Coffeescript/Development)
     git clone git://github.com/tjdetwiler/hcf.git hcf
     cd hcf
-    cake all
+    cake install # install node_modules
+    cake all     # build lib/ directory
     
 # Basic Usage (Emulator)
 
@@ -32,6 +33,11 @@ You can hook into execution events by providing callback methods:
     dcpu.onPeriodic(function(cpu) {});
     // onCondFail - Called when an instruction is skipped via conditional execution
     dcpu.onCondFail(function(cpu, i) {});
+    // onInstrUndefined - Called when an undefined instruction is executed.
+    //   The callback must return true if it wants the CPU to fetch the next instruction.
+    //   if a non-true value is returned and the callback doesn't update cpu.mDecoded, the
+    //   cpu will be stuck in an infinite loop.
+    onInstrUndefined(function(cpu, i) { return true; });
 
 Standard hardware devices are provided as well:
 
@@ -64,7 +70,7 @@ Register/Memory accessors:
     word = dcpu.readMem(addr);
     dcpu.writeMem(addr, 0xbeef);
     
-Breakpoints for read/write/execute events:
+Breakpoints for read/write/execute events (In Development):
 
     // Sets a breakpoint
     // addr - memory address
