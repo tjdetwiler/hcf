@@ -6,6 +6,7 @@ instruction_tests:
   - div.s
   - dvi.s
   - mod.s
+  - mdi.s
   - and.s
   - bor.s
   - xor.s

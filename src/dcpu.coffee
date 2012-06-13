@@ -113,10 +113,12 @@ class Dcpu16
   writeReg: (n,val) -> @_reg n, val
 
   clamp: (val) ->
-    if val < 0x10000
-      val
-    else
+    if val > 0xffff
       val % 0x10000
+    else if val < 0
+      val = @signExtend val
+    else
+      val
 
   #
   # Memory Interface
@@ -452,8 +454,7 @@ class Dcpu16
 
   _exec_mli: (a,b) ->
     v = (@signed a.get @) * (@signed b.get @)
-    v = @signExtend v
-    a.set @, v & 0xffff
+    a.set @, v
     @regEX ((v>>16) & 0xffff)
     
 
