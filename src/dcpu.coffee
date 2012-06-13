@@ -462,7 +462,7 @@ class Dcpu16
       a.set @, 0
       @regEX 0
     else 
-      v = a.get(@) / b.get(@)
+      v = (a.get @) / (b.get @)
       a.set @, v & 0xffff
       @regEX (((a.get(@) << 16)/b.get(@))&0xffff)
 
@@ -471,7 +471,7 @@ class Dcpu16
       a.set @, 0
       @regEX 0
     else 
-      v = (a.get @) / (@signed b.get @)
+      v = (@signed a.get @) / (@signed b.get @)
       a.set @, v & 0xffff
       @regEX ((a.get(@) << 16)/(@signed b.get @))&0xffff
 
@@ -537,9 +537,25 @@ class Dcpu16
     if (@signed a.get @) >= (@signed b.get @)
       @mCCFail=true
 
-  _exec_adx: (a,b) -> undefined
-  _exec_sbx: (a,b) -> undefined
-  _exec_asr: (a,b) -> undefined
+  _exec_adx: (a,b) -> 
+    v = a.get(@) + b.get(@) + @regEX()
+    if v > 0xffff
+      @regEX 1
+    else 
+      @regEX 0
+    a.set @, v & 0xffff
+
+  _exec_sbx: (a,b) -> 
+    v = a.get(@) - b.get(@) + @regEX()
+    if v < 0
+      @regEX 0xffff
+    else 
+      @regEX 0
+    a.set @, v & 0xffff
+
+  _exec_asr: (a,b) -> 
+    @regEX (((a.get(@) << 16)>>b.get(@))&0xffff)
+    a.set @, @signExtend(@signed(a.get(@)) >> b.get(@))
 
   _exec_sti: (a,b) ->
     a.set @, b.get @
