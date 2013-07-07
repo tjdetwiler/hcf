@@ -1,4 +1,3 @@
-yaml    = require 'js-yaml'
 fs      = require 'fs'
 {exec}  = require 'child_process'
 util    = require 'util'
